@@ -65,10 +65,10 @@ Base URL:
  ```
 ## 👤 User APIs
     Method     Endpoint        Description
-    POST	   /users	   Create a new user
-    GET	   /users	   Get all users
-    GET	   /users/{id}	   Get user by ID
-    PUT	   /users/{id}	   Update user by ID
+    POST	   /users	       Create a new user
+    GET	       /users	       Get all users
+    GET	       /users/{id}	   Get user by ID
+    PUT	       /users/{id}	   Update user by ID
     DELETE	   /users/{id}	   Delete user by ID
 
 ## 📥 Sample Request – Create User
