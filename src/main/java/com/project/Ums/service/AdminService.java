@@ -13,22 +13,28 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestBody;
+
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class UserService {
+public class AdminService {
 
     @Autowired
     private UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public void addUser(UserRequestDto dto) {
+    public void addUser(@RequestBody UserRequestDto dto) {
         User user = UserMapper.toEntity(dto);
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            user.setRoles(List.of("USER"));
+        }
         userRepository.save(user);
-        log.info("User created: {}", user.getUserName());
+        log.info("User created: {} with roles: {}", user.getUserName(), user.getRoles());
     }
 
     public List<UserResponseDto> getAllUsers() {
@@ -38,20 +44,14 @@ public class UserService {
                 .toList();
     }
 
-    public void updateUser(UserRequestDto dto){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userName = authentication.getName();
-        User userInDb = userRepository.findByUserName(userName);
-            userInDb.setUserName(dto.getUserName());
-            userInDb.setPassword(passwordEncoder.encode(dto.getPassword()));
-            userInDb.setEmail(dto.getEmail());
-        userRepository.save(userInDb);
+    public Optional<UserResponseDto> getUserById(String id){
+        return userRepository.findById(id)
+                .map(UserMapper::toResponse);
     }
 
-    public void deleteUserById(String ID){
-        SecurityContextHolder.getContext().getAuthentication();
-        User user = userRepository.findById(ID)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with ID:" + ID));
+    public void deleteUserById(String id){
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with ID:" + id));
         userRepository.delete(user);
     }
 }
