@@ -4,6 +4,9 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
 @Builder
@@ -13,11 +16,10 @@ public class UserRequestDto {
     private String id;
     @NotBlank(message = "Username is required")
     private String userName;
-
     @Email(message = "Email must be valid")
     @NotBlank(message = "Email is required")
     private String email;
-
     @NotBlank(message = "Password is required")
     private String password;
+    private List<String> roles = new ArrayList<>();
 }
