@@ -14,31 +14,31 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     @Autowired
-    private AdminService userService;
-
+    private AdminService adminService;
     @Autowired
     private EmailService emailService;
 
     @PostMapping("/add")
     public ResponseEntity<String> addUser(@Valid @RequestBody UserRequestDto dto) {
-        userService.addUser(dto);
+        adminService.addUser(dto);
         emailService.sendWelcomeEmail(dto);
         return ResponseEntity.ok("User added successfully and Username Password sent to Users email");
     }
 
     @GetMapping("/all")
     public ResponseEntity<?> getAllUsers() {
-        return new ResponseEntity<>(userService.getAllUsers(), HttpStatus.OK);
+        return new ResponseEntity<>(adminService.getAllUsers(), HttpStatus.OK);
     }
 
     @GetMapping("/User/{id}")
     public ResponseEntity<?> getUserById(@PathVariable String id){
-        return new ResponseEntity<>(userService.getUserById(id), HttpStatus.OK);
+        return new ResponseEntity<>(adminService.getUserById(id), HttpStatus.OK);
     }
 
     @DeleteMapping("/delete-user/{id}")
     public ResponseEntity<?> deleteUserById(@PathVariable String id){
-        userService.deleteUserById(id);
+        adminService.deleteUserById(id);
         return ResponseEntity.ok("User deleted successfully");
     }
+
 }
