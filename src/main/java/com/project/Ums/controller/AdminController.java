@@ -1,7 +1,6 @@
 package com.project.Ums.controller;
 
 import com.project.Ums.dto.UserRequestDto;
-import com.project.Ums.service.EmailService;
 import com.project.Ums.service.AdminService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,13 +14,10 @@ public class AdminController {
 
     @Autowired
     private AdminService adminService;
-    @Autowired
-    private EmailService emailService;
 
     @PostMapping("/add")
-    public ResponseEntity<String> addUser(@Valid @RequestBody UserRequestDto dto) {
+    public ResponseEntity<?> addUser(@Valid @RequestBody UserRequestDto dto) {
         adminService.addUser(dto);
-        emailService.sendWelcomeEmail(dto);
         return ResponseEntity.ok("User added successfully and Username Password sent to Users email");
     }
 

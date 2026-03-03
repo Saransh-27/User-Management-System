@@ -7,11 +7,9 @@ import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,16 +19,18 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AdminService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final OtpService otpService;
     private final PasswordEncoder passwordEncoder;
 
-    public void addUser(@RequestBody UserRequestDto dto) {
+    public void addUser(UserRequestDto dto) {
         User user = UserMapper.toEntity(dto);
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
         if (user.getRoles() == null || user.getRoles().isEmpty()) {
             user.setRoles(List.of("USER"));
         }
+        user.setStatus("PENDING");
+        otpService.sendOtp(user);
         userRepository.save(user);
         log.info("User created: {} with roles: {}", user.getUserName(), user.getRoles());
     }
