@@ -1,5 +1,7 @@
 package com.project.Ums.mapper;
-import com.project.Ums.dto.*;
+import com.project.Ums.dto.UserRequestDto;
+import com.project.Ums.dto.UserResponseDto;
+import com.project.Ums.dto.UserProfileDto;
 import com.project.Ums.entity.User;
 
 public class UserMapper {
@@ -22,6 +24,19 @@ public class UserMapper {
                 .userName(user.getUserName())
                 .email(user.getEmail())
                 .roles(user.getRoles())
+                .status(user.getStatus())
+                .build();
+    }
+
+    // Entity → User Profile (includes password)
+    public static UserProfileDto toProfile(User user) {
+        return UserProfileDto.builder()
+                .id(user.getId().toString())
+                .userName(user.getUserName())
+                .email(user.getEmail())
+                .password(user.getPassword())
+                .roles(user.getRoles())
+                .status(user.getStatus())
                 .build();
     }
 }
