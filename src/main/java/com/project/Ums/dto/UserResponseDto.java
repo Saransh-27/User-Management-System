@@ -15,4 +15,5 @@ public class UserResponseDto {
     private String userName;
     private String email;
     private List<String> roles = new ArrayList<>();
+    private String status;
 }
