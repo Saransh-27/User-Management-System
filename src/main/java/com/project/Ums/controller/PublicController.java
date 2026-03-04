@@ -1,7 +1,6 @@
 package com.project.Ums.controller;
 
 import com.project.Ums.dto.UserRequestDto;
-import com.project.Ums.dto.UserProfileDto;
 import com.project.Ums.entity.User;
 import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.UserRepository;

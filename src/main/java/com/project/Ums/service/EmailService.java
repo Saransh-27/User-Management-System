@@ -2,13 +2,11 @@ package com.project.Ums.service;
 
 import com.project.Ums.entity.User;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tomcat.util.buf.UDecoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
-import java.util.Base64;
 
 
 @Service
@@ -57,13 +55,11 @@ public class EmailService {
 
     private String createWelcomeMessage(User user) {
         // Decode the original password from Base64
-        String originalPassword = new String(Base64.getDecoder().decode(user.getEncodedOriginalPassword()));
-
         return "Dear " + user.getUserName() + ",\n\n" +
                 "Welcome to the User Management System!\n\n" +
                 "Your account has been successfully verified and activated. You can now login with the following credentials:\n\n" +
                 "Username: " + user.getUserName() + "\n" +
-                "Password: " + originalPassword + "\n" +
+                "Password: " + user.getPassword() + "\n" +
                 "User ID: " + user.getId() + "\n\n" +
                 "Please keep your User ID safe for future reference.\n\n" +
                 "You can now log in to your account and start using our services.\n\n" +

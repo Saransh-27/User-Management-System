@@ -1,6 +1,5 @@
 package com.project.Ums.service;
 
-import com.project.Ums.dto.UserResponseDto;
 import com.project.Ums.entity.User;
 import com.project.Ums.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
