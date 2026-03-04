@@ -5,6 +5,10 @@ import com.project.Ums.entity.User;
 import com.project.Ums.repository.UserRepository;
 import com.project.Ums.service.OtpService;
 import com.project.Ums.utils.JwtUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -26,12 +30,20 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
 
+    @Operation(summary = "User login", description = "Authenticates user credentials and returns JWT token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login successful - JWT token returned"),
+            @ApiResponse(responseCode = "400", description = "Invalid credentials"),
+            @ApiResponse(responseCode = "403", description = "User not verified"),
+            @ApiResponse(responseCode = "404", description = "User not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping("/login")
     public String login(@RequestBody LoginDto dto){
         try{
             User user = userRepository.findByUserName(dto.getUserName())
                         .orElseThrow(() -> new RuntimeException("User not found"));
-            
+
             if(!"ACTIVE".equals(user.getStatus())){
                 throw new RuntimeException("User is not verified");
             }
@@ -44,10 +56,20 @@ public class AuthController {
         }
     }
 
+    @Operation(summary = "Verify OTP", description = "Verifies user email using One-Time Password for account activation")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "OTP verified successfully - Account activated"),
+            @ApiResponse(responseCode = "400", description = "Invalid or expired OTP"),
+            @ApiResponse(responseCode = "404", description = "User not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping("/verify-otp")
     public ResponseEntity<String> verifyOtp(
-            @RequestParam String id, 
-            @RequestParam String email, 
+            @Parameter(description = "User ID", required = true)
+            @RequestParam String id,
+            @Parameter(description = "User email address", required = true)
+            @RequestParam String email,
+            @Parameter(description = "One-Time Password sent to email", required = true)
             @RequestParam String otp) {
         String response = otpService.verifyOtp(id, email, otp);
         return ResponseEntity.ok(response);
