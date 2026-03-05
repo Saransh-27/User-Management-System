@@ -37,6 +37,12 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 - **Spring Boot DevTools** - Hot reload and development utilities
 - **Lombok** - Code generation and boilerplate reduction
 - **Spring Boot Configuration Processor** - Configuration metadata generation
+- **Spring Boot Starter AOP** - Aspect-Oriented Programming for logging
+
+### API Documentation
+- **SpringDoc OpenAPI 3** - Interactive API documentation
+- **Swagger UI** - API testing and exploration interface
+- **OpenAPI Specification** - Standard API documentation format
 
 ### Testing
 - **Spring Boot Starter Test** - Testing framework with JUnit 5, Mockito, etc.
@@ -49,27 +55,40 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 src/main/java/com/project/Ums/
 ├── UmsApplication.java              # Main Spring Boot application class
 ├── config/
-│   └── SpringSecurity.java          # Security configuration and JWT setup
+│   ├── SpringSecurity.java          # Security configuration and JWT setup
+|   └── SwaggerConfig.java           # Swagger configuration and RestAPI UI
 ├── controller/
 │   ├── AdminController.java          # Admin-only user management endpoints
 │   ├── AuthController.java          # Authentication and JWT token generation
+│   ├── LogController.java          # Activity log management endpoints
 │   └── PublicController.java        # Public user endpoints
 ├── dto/
 │   ├── LoginDto.java               # Login request DTO
+│   ├── UserProfileDto.java         # User profile management DTO
 │   ├── UserRequestDto.java         # User creation/update DTO with validation
 │   └── UserResponseDto.java        # User response DTO
 ├── entity/
 │   └── User.java                   # MongoDB User entity with roles
 ├── filter/
 │   └── JwtFilter.java              # JWT authentication filter
+├── logging/
+│   ├── ActivityLog.java            # Activity log entity
+│   ├── ActivityLogAspect.java      # AOP aspect for automatic logging
+│   ├── ActivityLogRepository.java  # MongoDB repository for logs
+│   ├── ActivityLogService.java     # Log management service
+│   └── LogActivity.java            # Log annotation
+├── mapper/
+│   └── UserMapper.java             # Entity-DTO mapping utilities
 ├── repository/
 │   └── UserRepository.java         # MongoDB repository interface
 ├── service/
 │   ├── AdminService.java           # Admin business logic
 │   ├── EmailService.java           # Email notification service
+│   ├── LogCleanupService.java      # Automated log cleanup service
+│   ├── OtpService.java             # OTP generation and verification
 │   └── UserDetailServiceImpl.java  # User details service for Spring Security
-└── utils/
-    └── JwtUtil.java                # JWT token generation and validation utilities
+├── utils/
+│   └── JwtUtil.java                # JWT token generation and validation utilities
 
 src/main/resources/
 ├── application.yaml                # Application configuration (gitignored)
@@ -88,6 +107,8 @@ The application uses `application.yaml` for configuration (gitignored for securi
 - **Email**: SMTP configuration for email notifications
 - **JWT**: Secret key and token expiration settings
 - **Server**: Port and other server configurations
+- **Logging**: Activity log retention and cleanup settings
+- **OTP**: One-time password configuration for user verification
 
 ### Security Configuration
 - **JWT Secret**: Custom signing key for token validation
@@ -136,7 +157,9 @@ The application uses `application.yaml` for configuration (gitignored for securi
 
 5. **Access the Application**
    - Application runs on `http://localhost:8081`
+   - API Documentation: `http://localhost:8081/swagger-ui.html`
    - Default admin user needs to be created via database
+   - New users require OTP verification for activation
 
 ---
 
@@ -149,8 +172,8 @@ The application uses `application.yaml` for configuration (gitignored for securi
 4. Server validates token for each protected request
 
 ### Role-Based Access Control
-- **ADMIN**: Full access to all endpoints including user management
-- **USER**: Limited access to public endpoints
+- **ADMIN**: Full access to all endpoints including user management and logs
+- **USER**: Limited access to public endpoints and profile management
 - **PUBLIC**: Access to login endpoint only
 
 ### Security Features
@@ -159,6 +182,8 @@ The application uses `application.yaml` for configuration (gitignored for securi
 - Role-based endpoint protection
 - CORS configuration
 - Stateless session management
+- OTP-based user verification
+- Activity logging for audit trails
 
 ---
 
@@ -168,6 +193,11 @@ The application uses `application.yaml` for configuration (gitignored for securi
 ```
 http://localhost:8081
 ```
+
+### Interactive API Documentation
+- **Swagger UI**: `http://localhost:8081/swagger-ui.html`
+- **OpenAPI Spec**: `http://localhost:8081/v3/api-docs`
+- **API Testing**: Built-in Swagger interface for testing all endpoints
 
 ### Authentication Endpoints
 
@@ -221,6 +251,38 @@ DELETE /admin/delete-user/{id}
 Authorization: Bearer <jwt-token>
 ```
 
+### Activity Log Endpoints (Requires ADMIN role)
+
+#### Get All Activity Logs
+```http
+GET /admin/logs?page=0&size=20&sortBy=timestamp&sortDir=desc
+Authorization: Bearer <jwt-token>
+```
+
+#### Get Logs by Username
+```http
+GET /admin/logs/user/{username}?page=0&size=20
+Authorization: Bearer <jwt-token>
+```
+
+#### Get Recent Logs
+```http
+GET /admin/logs/recent
+Authorization: Bearer <jwt-token>
+```
+
+#### Get Log Statistics
+```http
+GET /admin/logs/stats
+Authorization: Bearer <jwt-token>
+```
+
+#### Trigger Log Cleanup
+```http
+POST /admin/logs/cleanup
+Authorization: Bearer <jwt-token>
+```
+
 ### Public Endpoints (Requires authentication)
 
 #### Get Current User Profile
@@ -252,7 +314,10 @@ Content-Type: application/json
   "userName": "string (unique)",
   "email": "string (unique, validated)",
   "password": "string (BCrypt hashed)",
-  "roles": ["string array (ROLE_USER, ROLE_ADMIN)"]
+  "roles": ["string array (ROLE_USER, ROLE_ADMIN)"],
+  "status": "string (ACTIVE, INACTIVE)",
+  "otp": "string (6-digit, for verification)",
+  "otpExpiry": "LocalDateTime (OTP expiration time)"
 }
 ```
 
@@ -275,12 +340,79 @@ Content-Type: application/json
 - `email`: String
 - `roles`: List<String>
 
+#### UserProfileDto
+- `id`: String
+- `userName`: String
+- `email`: String
+- `password`: String
+- `roles`: List<String>
+- `status`: String
+
+### Activity Log Entity
+```json
+{
+  "id": "string (MongoDB ObjectId)",
+  "userId": "string (user ID who performed action)",
+  "username": "string (username of user)",
+  "action": "string (type of action)",
+  "methodName": "string (method name called)",
+  "description": "string (action description)",
+  "ipAddress": "string (client IP address)",
+  "userAgent": "string (client user agent)",
+  "success": "boolean (action success status)",
+  "errorMessage": "string (error message if failed)",
+  "timestamp": "Instant (when action occurred)"
+}
+```
+
+## 📊 Activity Logging & Audit
+
+### Automatic Activity Logging
+- **AOP-Based Logging**: Automatic logging using Spring AOP
+- **@LogActivity Annotation**: Custom annotation for logging specific methods
+- **Comprehensive Tracking**: Logs user actions, IP addresses, timestamps
+- **Success/Failure Tracking**: Records both successful and failed operations
+
+### Log Management Features
+- **MongoDB Storage**: Logs stored in dedicated `activity_logs` collection
+- **Automatic Indexing**: Optimized indexes for efficient querying
+- **Paginated Retrieval**: Efficient log browsing with pagination
+- **User-Specific Logs**: Filter logs by username
+- **Recent Activity**: Quick access to latest 50 activities
+
+### Log Cleanup Service
+- **Automated Cleanup**: Scheduled removal of old logs
+- **Configurable Retention**: Default 90-day retention period
+- **Batch Processing**: Efficient bulk deletion operations
+- **MongoDB Atlas Optimization**: Optimized for Atlas performance
+- **Manual Cleanup**: Admin-triggered cleanup available
+
+### Log Configuration
+```yaml
+logging:
+  retention:
+    days: 90
+  cleanup:
+    batch-size: 1000
+```
+
 ---
 
 ## 📧 Email Features
 
+### Email Services
+- **Registration Email**: Sends OTP for user verification
+- **Welcome Email**: Sends login credentials after successful verification
+- **Password Notifications**: Email notifications for password changes
+
+### OTP Verification System
+- **6-digit OTP**: Secure one-time password generation
+- **5-minute Expiry**: Automatic OTP expiration for security
+- **Email Delivery**: OTP sent via configured SMTP server
+- **Account Activation**: Users activated only after OTP verification
+
 ### Welcome Email Service
-- Automatically sends welcome emails when new users are created
+- Automatically sends welcome emails when new users are verified
 - Includes username and password in the email body
 - Uses JavaMailSender with SMTP configuration
 
@@ -343,6 +475,9 @@ Project uses Lombok annotations:
 - Custom exception handling
 - Proper logging with SLF4J
 - Clean architecture with separation of concerns
+- AOP for cross-cutting concerns (logging)
+- DTO pattern for API data transfer
+- Repository pattern for data access
 
 ---
 
@@ -387,6 +522,8 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
 - `SPRING_MAIL_USERNAME` - SMTP username
 - `SPRING_MAIL_PASSWORD` - SMTP password
 - `JWT_SECRET` - JWT signing secret
+- `LOGGING_RETENTION_DAYS` - Log retention period (default: 90)
+- `LOGGING_CLEANUP_BATCH_SIZE` - Log cleanup batch size (default: 1000)
 
 ---
 
@@ -408,6 +545,9 @@ Current version uses base paths without versioning. Future versions can implemen
 5. **Role-Based Access**: Principle of least privilege
 6. **Stateless Authentication**: JWT-based sessions
 7. **Environment Variables**: Sensitive data in configuration
+8. **OTP Verification**: Two-factor authentication for user activation
+9. **Activity Logging**: Complete audit trail for security monitoring
+10. **IP Address Tracking**: Monitor access patterns and detect anomalies
 
 ---
 
@@ -418,6 +558,10 @@ Current version uses base paths without versioning. Future versions can implemen
 - Lazy loading for collections
 - Efficient JWT token validation
 - Proper exception handling to prevent resource leaks
+- **Activity Log Indexing**: Optimized compound indexes for log queries
+- **Batch Log Cleanup**: Efficient bulk deletion operations
+- **Pagination**: Memory-efficient log retrieval
+- **MongoDB Atlas Optimization**: Atlas-specific performance tuning
 
 ---
 
@@ -449,25 +593,34 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For support and queries:
 - Create an issue in the GitHub repository
-- Email: [your-email@example.com]
+- Email: [saranshdhiman353@gmail.com]
 - Documentation: Check the API documentation above
 
 ---
 
 ## 🗺️ Roadmap
 
+### ✅ Completed Features
+- [x] JWT-based authentication system
+- [x] Role-based access control (ADMIN/USER)
+- [x] Email notifications and OTP verification
+- [x] Activity logging with AOP
+- [x] Automated log cleanup service
+- [x] Swagger/OpenAPI documentation
+- [x] User status management (ACTIVE/INACTIVE)
+- [x] MongoDB Atlas optimization
+- [x] Comprehensive audit trails
+
 ### Upcoming Features
 - [ ] Password reset functionality
-- [ ] Account email verification
+- [ ] Account email verification improvements
 - [ ] User profile image upload
-- [ ] Audit logging for user actions
 - [ ] Rate limiting for API endpoints
 - [ ] Multi-factor authentication (MFA)
 - [ ] OAuth2 integration (Google, GitHub)
 - [ ] Advanced user search and filtering
 - [ ] Bulk user operations
 - [ ] User activity dashboard
-- [ ] API documentation with Swagger/OpenAPI
 - [ ] GraphQL API support
 - [ ] Redis caching for improved performance
 - [ ] Microservices architecture migration
@@ -493,6 +646,11 @@ This project demonstrates:
 - Security configuration and implementation
 - Clean architecture and design patterns
 - Modern Java development practices
+- **AOP and cross-cutting concerns**
+- **Activity logging and audit trails**
+- **OTP verification systems**
+- **Swagger/OpenAPI documentation**
+- **MongoDB Atlas optimization**
 
 Perfect for learning:
 - Enterprise Java development
@@ -501,4 +659,7 @@ Perfect for learning:
 - Database integration
 - API development
 - DevOps practices
+- **Audit logging implementation**
+- **Email verification workflows**
+- **Performance optimization**
 
