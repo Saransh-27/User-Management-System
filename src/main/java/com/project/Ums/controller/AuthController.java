@@ -2,6 +2,7 @@ package com.project.Ums.controller;
 
 import com.project.Ums.dto.LoginDto;
 import com.project.Ums.entity.User;
+import com.project.Ums.logging.LogActivity;
 import com.project.Ums.repository.UserRepository;
 import com.project.Ums.service.OtpService;
 import com.project.Ums.utils.JwtUtil;
@@ -38,6 +39,7 @@ public class AuthController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="LOGIN", description="User login attempt")
     @PostMapping("/login")
     public String login(@RequestBody LoginDto dto){
         try{
@@ -63,6 +65,7 @@ public class AuthController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="VERIFY_OTP", description="Email verification via OTP")
     @PostMapping("/verify-otp")
     public ResponseEntity<String> verifyOtp(
             @Parameter(description = "User ID", required = true)

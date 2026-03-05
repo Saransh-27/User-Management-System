@@ -2,6 +2,7 @@ package com.project.Ums.controller;
 
 import com.project.Ums.dto.UserRequestDto;
 import com.project.Ums.entity.User;
+import com.project.Ums.logging.LogActivity;
 import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,6 +41,7 @@ public class PublicController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="VIEW_PROFILE", description="Viewed own profile")
     @GetMapping("/view-profile")
     public ResponseEntity<?> userByUsername(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -57,6 +59,7 @@ public class PublicController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="UPDATE_PROFILE", description="Updated own profile")
     @PutMapping("/update-user")
     public ResponseEntity<?> updateUser(
             @Parameter(description = "Updated user profile information", required = true)
@@ -79,6 +82,7 @@ public class PublicController {
             @ApiResponse(responseCode = "404", description = "User not found"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="DELETE_ACCOUNT", description="Deleted own account")
     @DeleteMapping("/delete-user")
     public ResponseEntity<?> deleteUser(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

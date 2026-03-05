@@ -1,6 +1,7 @@
 package com.project.Ums.controller;
 
 import com.project.Ums.dto.UserRequestDto;
+import com.project.Ums.logging.LogActivity;
 import com.project.Ums.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +31,7 @@ public class AdminController {
             @ApiResponse(responseCode = "403", description = "Access denied - Admin only"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="CREATE_USER", description="Created a new user")
     @PostMapping("/add")
     public ResponseEntity<?> addUser(
             @Parameter(description = "User details for creating new account", required = true)
@@ -44,6 +46,7 @@ public class AdminController {
             @ApiResponse(responseCode = "403", description = "Access denied - Admin only"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="VIEW_ALL_USERS", description="Retrieved all users")
     @GetMapping("/all")
     public ResponseEntity<?> getAllUsers() {
         return new ResponseEntity<>(adminService.getAllUsers(), HttpStatus.OK);
@@ -56,6 +59,7 @@ public class AdminController {
             @ApiResponse(responseCode = "403", description = "Access denied - Admin only"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="VIEW_USER", description="Retrieved user by ID")
     @GetMapping("/User/{id}")
     public ResponseEntity<?> getUserById(
             @Parameter(description = "Unique identifier of the user", required = true)
@@ -70,6 +74,7 @@ public class AdminController {
             @ApiResponse(responseCode = "403", description = "Access denied - Admin only"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
+    @LogActivity(action="DELETE_USER", description="Deleted user account")
     @DeleteMapping("/delete-user/{id}")
     public ResponseEntity<?> deleteUserById(
             @Parameter(description = "Unique identifier of the user to delete", required = true)
