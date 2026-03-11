@@ -77,4 +77,24 @@ public class AuthController {
         String response = otpService.verifyOtp(id, email, otp);
         return ResponseEntity.ok(response);
     }
+
+    @Operation(summary = "Request OTP verification", description = "Sends OTP to user's email for account verification")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "OTP sent successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid email or user already verified"),
+            @ApiResponse(responseCode = "404", description = "User not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @LogActivity(action="REQUEST_OTP", description="User requested OTP verification")
+    @PostMapping("/request-otp")
+    public ResponseEntity<?> requestOtp(
+            @RequestParam String id,
+            @RequestParam String email) {
+        try {
+            otpService.sendOtpOnRequest(id, email);
+            return ResponseEntity.ok("OTP sent to your email. Valid for 5 minutes.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
