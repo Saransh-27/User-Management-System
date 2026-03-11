@@ -20,7 +20,7 @@ import java.util.Optional;
 public class AdminService {
 
     private final UserRepository userRepository;
-    private final OtpService otpService;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
     public void addUser(UserRequestDto dto) {
@@ -30,8 +30,8 @@ public class AdminService {
             user.setRoles(List.of("USER"));
         }
         user.setStatus("PENDING");
-        otpService.sendOtp(user);
         userRepository.save(user);
+        emailService.sendUserCreationEmail(user);
         log.info("User created: {} with roles: {}", user.getUserName(), user.getRoles());
     }
 
