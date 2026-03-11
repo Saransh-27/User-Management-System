@@ -19,15 +19,19 @@ public class OtpService {
     private EmailService emailService;
     private final SecureRandom random = new SecureRandom();
 
-    public void sendOtp(User user) {
+    public void sendOtpOnRequest(String id, String email) {
+        User user = userRepository.findByIdAndEmail(id, email)
+                .orElseThrow(() -> new RuntimeException("User not found with provided ID and email"));
+        if ("ACTIVE".equals(user.getStatus())) {
+            throw new RuntimeException("User is already verified.");
+        }
         String otp = generateOtp();
-        // SAVE OTP
         user.setOtp(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
         userRepository.save(user);
-        // Send registration email with OTP
-        emailService.sendRegistrationEmail(user, otp);
-        log.info("Registration email with OTP sent to: {}", user.getEmail());
+        // Send OTP email
+        emailService.sendOTPEmail(user, otp);
+        log.info("OTP sent to: {}", user.getEmail());
     }
 
     public String generateOtp() {

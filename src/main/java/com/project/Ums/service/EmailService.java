@@ -22,16 +22,24 @@ public class EmailService {
             mail.setSubject(subject);
             mail.setText(body);
             javaMailSender.send(mail);
+            log.info("Email sent successfully to: {}", to);
         } catch (Exception e) {
-            log.error("Exception while sendmail ", e);
+            log.error("Exception while sending email to {}: ", to, e);
         }
     }
 
-    public void sendRegistrationEmail(User user, String otp) {
-        String subject = "User Registration - OTP Verification Required";
-        String body = createRegistrationMessage(user, otp);
+    public void sendUserCreationEmail(User user) {
+        String subject = "Account Created - Verification Required";
+        String body = createUserCreationMessage(user);
         sendEmail(user.getEmail(), subject, body);
-        log.info("Registration email sent to: {}", user.getEmail());
+        log.info("User creation email sent to: {}", user.getEmail());
+    }
+
+    public void sendOTPEmail(User user, String otp) {
+        String subject = "OTP Verification - User Management System";
+        String body = createOTPMessage(user, otp);
+        sendEmail(user.getEmail(), subject, body);
+        log.info("OTP email sent to: {}", user.getEmail());
     }
 
     public void sendWelcomeEmail(User user) {
@@ -41,25 +49,36 @@ public class EmailService {
         log.info("Welcome email sent to: {}", user.getEmail());
     }
 
-    private String createRegistrationMessage(User user, String otp) {
+    private String createUserCreationMessage(User user) {
         return "Dear User,\n\n" +
-                "Welcome to the User Management System!\n\n" +
-                "Your account has been created by an administrator. Please verify your account using the following details:\n\n" +
+                "Your account has been successfully created in the User Management System by an administrator.\n\n" +
+                "Account Details:\n" +
                 "User ID: " + user.getId() + "\n" +
                 "Email: " + user.getEmail() + "\n" +
-                "OTP: " + otp + "\n\n" +
-                "Please use this OTP to complete your registration process.\n\n" +
+                "Username: " + user.getUserName() + "\n\n" +
+                "IMPORTANT: You need to verify your account before accessing the system.\n" +
+                "Please request OTP verification to complete your account setup.\n\n" +
+                "Best regards,\n" +
+                "User Management System Team";
+    }
+
+    private String createOTPMessage(User user, String otp) {
+        return "Dear " + user.getUserName() + ",\n\n" +
+                "Here is your OTP for account verification:\n\n" +
+                "OTP: " + otp + "\n" +
+                "Valid for: 5 minutes\n\n" +
+                "Please use this OTP to complete your verification process.\n" +
+                "If you didn't request this OTP, please contact support immediately.\n\n" +
                 "Best regards,\n" +
                 "User Management System Team";
     }
 
     private String createWelcomeMessage(User user) {
-        // Decode the original password from Base64
         return "Dear " + user.getUserName() + ",\n\n" +
                 "Welcome to the User Management System!\n\n" +
                 "Your account has been successfully verified and activated. You can now login with the following credentials:\n\n" +
                 "Username: " + user.getUserName() + "\n" +
-                "Password: " + user.getPassword() + "\n" +
+                "Password: " + "Same as UserName" + "\n" +
                 "User ID: " + user.getId() + "\n\n" +
                 "Please keep your User ID safe for future reference.\n\n" +
                 "You can now log in to your account and start using our services.\n\n" +
