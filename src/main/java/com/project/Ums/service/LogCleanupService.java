@@ -27,10 +27,10 @@ public class LogCleanupService {
     private final ActivityLogRepository logRepository;
     private final MongoTemplate mongoTemplate;
 
-    @Value("${logging.retention.days}")
+    @Value("${spring.logging.retention.days}")
     private int retentionDays;
 
-    @Value("${logging.cleanup.batch-size}")
+    @Value("${spring.logging.cleanup.batch-size}")
     private int batchSize;
 
     @PostConstruct
