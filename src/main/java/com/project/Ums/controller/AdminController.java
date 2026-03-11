@@ -37,7 +37,7 @@ public class AdminController {
             @Parameter(description = "User details for creating new account", required = true)
             @Valid @RequestBody UserRequestDto dto) {
         adminService.addUser(dto);
-        return ResponseEntity.ok("User added successfully and Username Password sent to Users email");
+        return ResponseEntity.ok("User added successfully. Account creation info sent to user's email for verification.");
     }
 
     @Operation(summary = "Get all users", description = "Retrieves a list of all registered users")
