@@ -1,6 +1,6 @@
 # User Management System (UMS)
 
-A comprehensive backend User Management System built with Spring Boot 3.5.10 and MongoDB, featuring JWT-based authentication, role-based authorization, email notifications, and RESTful APIs for complete user lifecycle management.
+A comprehensive backend User Management System built with Spring Boot 3.5.10 and MongoDB, featuring JWT-based authentication, role-based authorization, email notifications with OTP verification, comprehensive activity logging, and RESTful APIs for complete user lifecycle management.
 
 ---
 
@@ -16,6 +16,7 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 - **MongoDB** - NoSQL database for data storage
 - **Spring Data MongoDB** - MongoDB integration and repository support
 - **Spring Boot Starter Data MongoDB** - MongoDB auto-configuration
+- **MongoDB Indexing** - Optimized indexes on userName, email, status, and otp fields
 
 ### Security & Authentication
 - **Spring Security 6.x** - Security framework
@@ -23,15 +24,18 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 - **JJWT 0.12.5** - JWT library (api, jackson, impl modules)
 - **BCrypt** - Password encryption
 - **Role-based Access Control** - ADMIN and USER roles
+- **OTP Verification** - 6-digit one-time password system
 
 ### Web & API
 - **Spring Boot Starter Web** - REST API development
 - **Spring Boot Starter Validation** - Input validation using Jakarta Bean Validation
 - **RESTful APIs** - Complete CRUD operations
+- **Swagger/OpenAPI 3.0** - Interactive API documentation
 
 ### Email & Communication
 - **Spring Boot Starter Mail** - Email sending capabilities
 - **JavaMailSender** - Email service implementation
+- **SMTP Integration** - Configurable email server support
 
 ### Development Tools
 - **Spring Boot DevTools** - Hot reload and development utilities
@@ -46,6 +50,8 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 
 ### Testing
 - **Spring Boot Starter Test** - Testing framework with JUnit 5, Mockito, etc.
+- **JUnit Jupiter** - Modern testing framework
+- **Test Coverage** - Unit and integration testing support
 
 ---
 
@@ -56,7 +62,7 @@ src/main/java/com/project/Ums/
 ├── UmsApplication.java              # Main Spring Boot application class
 ├── config/
 │   ├── SpringSecurity.java          # Security configuration and JWT setup
-|   └── SwaggerConfig.java           # Swagger configuration and RestAPI UI
+│   └── SwaggerConfig.java           # Swagger configuration and API documentation
 ├── controller/
 │   ├── AdminController.java          # Admin-only user management endpoints
 │   ├── AuthController.java          # Authentication and JWT token generation
@@ -68,7 +74,7 @@ src/main/java/com/project/Ums/
 │   ├── UserRequestDto.java         # User creation/update DTO with validation
 │   └── UserResponseDto.java        # User response DTO
 ├── entity/
-│   └── User.java                   # MongoDB User entity with roles
+│   └── User.java                   # MongoDB User entity with roles and OTP
 ├── filter/
 │   └── JwtFilter.java              # JWT authentication filter
 ├── logging/
@@ -76,7 +82,7 @@ src/main/java/com/project/Ums/
 │   ├── ActivityLogAspect.java      # AOP aspect for automatic logging
 │   ├── ActivityLogRepository.java  # MongoDB repository for logs
 │   ├── ActivityLogService.java     # Log management service
-│   └── LogActivity.java            # Log annotation
+│   └── LogActivity.java            # Log annotation for AOP
 ├── mapper/
 │   └── UserMapper.java             # Entity-DTO mapping utilities
 ├── repository/
@@ -87,13 +93,17 @@ src/main/java/com/project/Ums/
 │   ├── LogCleanupService.java      # Automated log cleanup service
 │   ├── OtpService.java             # OTP generation and verification
 │   └── UserDetailServiceImpl.java  # User details service for Spring Security
-├── utils/
-│   └── JwtUtil.java                # JWT token generation and validation utilities
+└── utils/
+    └── JwtUtil.java                # JWT token generation and validation utilities
 
 src/main/resources/
 ├── application.yaml                # Application configuration (gitignored)
 ├── static/                         # Static resources
 └── templates/                      # Template files
+
+src/test/java/com/project/Ums/
+├── UmsApplicationTests.java        # Main application test class
+└── service/                        # Service layer tests
 ```
 
 ---
@@ -103,19 +113,55 @@ src/main/resources/
 ### Application Configuration
 The application uses `application.yaml` for configuration (gitignored for security):
 
-- **Database**: MongoDB connection settings
+- **Database**: MongoDB connection settings with database name
 - **Email**: SMTP configuration for email notifications
 - **JWT**: Secret key and token expiration settings
-- **Server**: Port and other server configurations
+- **Server**: Port configuration (default: 8081)
 - **Logging**: Activity log retention and cleanup settings
 - **OTP**: One-time password configuration for user verification
+- **SpringDoc**: OpenAPI documentation configuration
+
+### Key Configuration Sections
+```yaml
+server:
+  port: 8081
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/ums_db
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: your-app-password
+
+jwt:
+  secret: your-secret-key
+  expiration: 3600000  # 1 hour
+
+logging:
+  retention:
+    days: 90
+  cleanup:
+    batch-size: 1000
+
+otp:
+  length: 6
+  expiry-minutes: 5
+```
 
 ### Security Configuration
 - **JWT Secret**: Custom signing key for token validation
-- **Token Expiration**: 1 hour (3600 seconds)
+- **Token Expiration**: 1 hour (3600000 milliseconds)
 - **Password Encoding**: BCrypt with default strength
 - **CORS**: Configured for cross-origin requests
 - **Session Management**: Stateless (JWT-based)
+- **Endpoint Security**: 
+  - `/auth/**` - Public access
+  - `/admin/**` - ADMIN role required
+  - `/public/**` - Authentication required
+  - Swagger endpoints - Public access
 
 ---
 
@@ -199,6 +245,15 @@ http://localhost:8081
 - **OpenAPI Spec**: `http://localhost:8081/v3/api-docs`
 - **API Testing**: Built-in Swagger interface for testing all endpoints
 
+### Endpoint Summary
+
+| Controller | Base Path | Authentication | Description |
+|------------|-----------|----------------|-------------|
+| AuthController | `/auth` | Public | Login and OTP verification |
+| AdminController | `/admin` | ADMIN role | User management operations |
+| PublicController | `/public` | Authenticated users | User profile management |
+| LogController | `/admin/logs` | ADMIN role | Activity log management |
+
 ### Authentication Endpoints
 
 #### Login
@@ -216,6 +271,12 @@ Content-Type: application/json
 ```json
 "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.signature"
 ```
+
+**Error Responses:**
+- `400 Bad Request` - Invalid credentials
+- `403 Forbidden` - User not verified (INACTIVE status)
+- `404 Not Found` - User not found
+- `500 Internal Server Error` - Server error
 
 ### Admin Endpoints (Requires ADMIN role)
 
@@ -287,21 +348,49 @@ Authorization: Bearer <jwt-token>
 
 #### Get Current User Profile
 ```http
-GET /public/profile
+GET /public/view-profile
 Authorization: Bearer <jwt-token>
 ```
 
 #### Update User Profile
 ```http
-PUT /public/update
+PUT /public/update-user
 Authorization: Bearer <jwt-token>
 Content-Type: application/json
 
 {
   "userName": "updated_username",
-  "email": "updated@example.com"
+  "email": "updated@example.com",
+  "password": "new_password123"
 }
 ```
+
+#### Delete User Account
+```http
+DELETE /public/delete-user
+Authorization: Bearer <jwt-token>
+```
+
+### OTP Verification Endpoints
+
+#### Verify OTP
+```http
+POST /auth/verify-otp?id={id}&email={email}&otp={otp}
+```
+
+**Parameters:**
+- `id` (path param): User ID
+- `email` (path param): User email address  
+- `otp` (path param): One-Time Password sent to email
+
+#### Request OTP
+```http
+POST /auth/request-otp?id={id}&email={email}
+```
+
+**Parameters:**
+- `id` (path param): User ID
+- `email` (path param): User email address
 
 ---
 
@@ -311,12 +400,12 @@ Content-Type: application/json
 ```json
 {
   "id": "string (MongoDB ObjectId)",
-  "userName": "string (unique)",
+  "userName": "string (unique, indexed)",
   "email": "string (unique, validated)",
   "password": "string (BCrypt hashed)",
   "roles": ["string array (ROLE_USER, ROLE_ADMIN)"],
-  "status": "string (ACTIVE, INACTIVE)",
-  "otp": "string (6-digit, for verification)",
+  "status": "string (ACTIVE, INACTIVE, indexed)",
+  "otp": "string (6-digit, indexed, for verification)",
   "otpExpiry": "LocalDateTime (OTP expiration time)"
 }
 ```
@@ -354,7 +443,7 @@ Content-Type: application/json
   "id": "string (MongoDB ObjectId)",
   "userId": "string (user ID who performed action)",
   "username": "string (username of user)",
-  "action": "string (type of action)",
+  "action": "string (type of action: LOGIN, CREATE, UPDATE, DELETE)",
   "methodName": "string (method name called)",
   "description": "string (action description)",
   "ipAddress": "string (client IP address)",
@@ -364,6 +453,11 @@ Content-Type: application/json
   "timestamp": "Instant (when action occurred)"
 }
 ```
+
+### MongoDB Indexes
+The application uses optimized indexes for performance:
+- **Users Collection**: userName, email, status, otp
+- **Activity Logs Collection**: userId, username, timestamp, action
 
 ## 📊 Activity Logging & Audit
 
@@ -443,17 +537,36 @@ spring:
 mvn test
 
 # Run specific test class
-mvn test -Dtest=UserServiceTest
+mvn test -Dtest=UmsApplicationTests
 
 # Run with coverage
 mvn clean test jacoco:report
+
+# Run tests with specific profile
+mvn test -Dspring.profiles.active=test
 ```
 
-### Test Coverage
-- Unit tests for service layer
-- Integration tests for repositories
-- Security configuration tests
-- API endpoint tests
+### Test Structure
+- **UmsApplicationTests.java** - Main application context test
+- **Service Tests** - Located in `src/test/java/com/project/Ums/service/`
+- **Integration Tests** - Repository and controller testing
+- **Security Tests** - Authentication and authorization testing
+
+### Test Coverage Areas
+- Unit tests for service layer business logic
+- Integration tests for MongoDB repositories
+- Security configuration tests for JWT and role-based access
+- API endpoint tests for all controllers
+- Email service testing with mock configurations
+- OTP service testing for generation and validation
+- Activity logging tests for AOP functionality
+
+### Testing Dependencies
+- **Spring Boot Starter Test** - Core testing framework
+- **JUnit Jupiter** - Modern testing framework
+- **JUnit Jupiter Params** - Parameterized tests
+- **Mockito** - Mocking framework for unit tests
+- **TestContainers** - Integration testing with real MongoDB (if configured)
 
 ---
 
@@ -553,15 +666,33 @@ Current version uses base paths without versioning. Future versions can implemen
 
 ## 📈 Performance Considerations
 
-- MongoDB indexing on `userName` and `email` fields
-- Connection pooling for database
-- Lazy loading for collections
-- Efficient JWT token validation
-- Proper exception handling to prevent resource leaks
-- **Activity Log Indexing**: Optimized compound indexes for log queries
-- **Batch Log Cleanup**: Efficient bulk deletion operations
-- **Pagination**: Memory-efficient log retrieval
-- **MongoDB Atlas Optimization**: Atlas-specific performance tuning
+### Database Optimizations
+- **MongoDB Indexing**: Optimized indexes on `userName`, `email`, `status`, and `otp` fields
+- **Activity Log Indexing**: Compound indexes for efficient log queries
+- **Connection Pooling**: MongoDB connection pooling for optimal performance
+- **Lazy Loading**: Efficient data loading strategies
+
+### Application Performance
+- **JWT Token Validation**: Efficient token validation with minimal overhead
+- **AOP Logging**: Optimized aspect-oriented programming for logging
+- **Batch Operations**: Efficient bulk operations for log cleanup
+- **Memory Management**: Proper exception handling to prevent resource leaks
+
+### Log Management Performance
+- **Batch Log Cleanup**: Efficient bulk deletion operations (1000 records per batch)
+- **Pagination**: Memory-efficient log retrieval with configurable page sizes
+- **Scheduled Cleanup**: Automated log cleanup to maintain database performance
+- **Index Optimization**: MongoDB Atlas-optimized indexes for log queries
+
+### Caching Strategies
+- **JWT Token Caching**: In-memory token validation cache (if implemented)
+- **User Data Caching**: Potential for Redis integration (future enhancement)
+- **Configuration Caching**: Spring Boot configuration caching
+
+### Monitoring & Metrics
+- **Activity Log Statistics**: Real-time log analytics
+- **Performance Metrics**: Request/response time tracking
+- **Database Performance**: Query optimization and monitoring
 
 ---
 
