@@ -1,9 +1,13 @@
 package com.project.Ums.controller;
 
 import com.project.Ums.dto.LoginDto;
+import com.project.Ums.dto.LoginResponse;
+import com.project.Ums.dto.UserRequestDto;
 import com.project.Ums.entity.User;
 import com.project.Ums.logging.LogActivity;
+import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.UserRepository;
+import com.project.Ums.service.AdminService;
 import com.project.Ums.service.OtpService;
 import com.project.Ums.utils.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,6 +34,8 @@ public class AuthController {
     private OtpService otpService;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private AdminService adminService;
 
     @Operation(summary = "User login", description = "Authenticates user credentials and returns JWT token")
     @ApiResponses(value = {
@@ -41,7 +47,7 @@ public class AuthController {
     })
     @LogActivity(action="LOGIN", description="User login attempt")
     @PostMapping("/login")
-    public String login(@RequestBody LoginDto dto){
+    public ResponseEntity<?> login(@RequestBody LoginDto dto){
         try{
             User user = userRepository.findByUserName(dto.getUserName())
                         .orElseThrow(() -> new RuntimeException("User not found"));
@@ -51,10 +57,30 @@ public class AuthController {
             }
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(dto.getUserName(), dto.getPassword()));
-            return jwtUtil.generateToken(authentication.getName());
+            String token = jwtUtil.generateToken(authentication.getName());
+            
+            // Return both token and user data
+            return ResponseEntity.ok(new LoginResponse(token, UserMapper.toProfile(user)));
         }catch (Exception e){
             log.error("Exception occurred while createAuthenticationToken ", e);
             throw new RuntimeException("Incorrect username or password", e);
+        }
+    }
+
+    @Operation(summary = "User registration", description = "Creates a new user account and sends OTP for email verification")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Registration successful - OTP sent"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data or user already exists"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @LogActivity(action="REGISTER", description="User registration")
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody UserRequestDto dto) {
+        try {
+            adminService.addUser(dto);
+            return ResponseEntity.ok("Registration successful. Please check your email for OTP verification.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -86,8 +112,8 @@ public class AuthController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @LogActivity(action="REQUEST_OTP", description="User requested OTP verification")
-    @PostMapping("/request-otp")
-    public ResponseEntity<?> requestOtp(
+    @PostMapping("/resend-otp")
+    public ResponseEntity<?> resendOtp(
             @RequestParam String id,
             @RequestParam String email) {
         try {

@@ -10,12 +10,13 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 - **Java 17** - Programming language
 - **Spring Boot 3.5.10** - Main application framework
 - **Maven** - Build and dependency management
-- **Spring AI 1.1.2** - AI integration capabilities
+- **Spring AI 1.1.2** - AI integration capabilities (configured for future use)
 
 ### Database & Persistence
 - **MongoDB** - NoSQL database for data storage
 - **Spring Data MongoDB** - MongoDB integration and repository support
-- **Spring Boot Starter Data MongoDB** - MongoDB auto-configuration
+- **MongoDB Atlas Compatible** - Optimized for cloud deployment
+- **Indexed Fields**: userName, email, status, otp for optimized queries
 - **MongoDB Indexing** - Optimized indexes on userName, email, status, and otp fields
 
 ### Security & Authentication
@@ -35,6 +36,8 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 ### Email & Communication
 - **Spring Boot Starter Mail** - Email sending capabilities
 - **JavaMailSender** - Email service implementation
+- **SMTP Integration** - Gmail and other SMTP providers support
+- **Template-based Emails** - Structured email templates for user communications
 - **SMTP Integration** - Configurable email server support
 
 ### Development Tools
@@ -44,9 +47,10 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 - **Spring Boot Starter AOP** - Aspect-Oriented Programming for logging
 
 ### API Documentation
-- **SpringDoc OpenAPI 3** - Interactive API documentation
+- **SpringDoc OpenAPI 3** - Interactive API documentation (version 2.8.15)
 - **Swagger UI** - API testing and exploration interface
 - **OpenAPI Specification** - Standard API documentation format
+- **Security Documentation** - JWT bearer authentication support
 
 ### Testing
 - **Spring Boot Starter Test** - Testing framework with JUnit 5, Mockito, etc.
@@ -113,42 +117,68 @@ src/test/java/com/project/Ums/
 ### Application Configuration
 The application uses `application.yaml` for configuration (gitignored for security):
 
-- **Database**: MongoDB connection settings with database name
-- **Email**: SMTP configuration for email notifications
-- **JWT**: Secret key and token expiration settings
-- **Server**: Port configuration (default: 8081)
-- **Logging**: Activity log retention and cleanup settings
-- **OTP**: One-time password configuration for user verification
-- **SpringDoc**: OpenAPI documentation configuration
-
-### Key Configuration Sections
+#### Database Configuration
 ```yaml
-server:
-  port: 8081
-
 spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/ums_db
+      # Or MongoDB Atlas connection string
+      # uri: mongodb+srv://username:password@cluster.mongodb.net/ums_db
+```
+
+#### Email Configuration
+```yaml
+spring:
   mail:
     host: smtp.gmail.com
     port: 587
     username: your-email@gmail.com
     password: your-app-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+```
 
+#### Security Configuration
+```yaml
 jwt:
-  secret: your-secret-key
-  expiration: 3600000  # 1 hour
+  secret: your-secret-key-here
+  expiration: 3600000  # 1 hour in milliseconds
+```
 
+#### Server Configuration
+```yaml
+server:
+  port: 8081
+  servlet:
+    context-path: /
+```
+
+#### Logging Configuration
+```yaml
 logging:
+  level:
+    com.project.Ums: INFO
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/ums.log
+```
+
+#### Activity Log Configuration
+```yaml
+activity-log:
   retention:
     days: 90
   cleanup:
     batch-size: 1000
-
-otp:
-  length: 6
-  expiry-minutes: 5
+    enabled: true
 ```
 
 ### Security Configuration
@@ -394,6 +424,82 @@ POST /auth/request-otp?id={id}&email={email}
 
 ---
 
+## 🔐 OTP Verification System
+
+### Complete User Activation Workflow
+
+#### Step 1: User Creation (Admin)
+1. Admin creates user via `/admin/add` endpoint
+2. User is created with `status: PENDING`
+3. Account creation email sent to user's email address
+4. User receives notification to request OTP verification
+
+#### Step 2: OTP Request (User)
+```http
+POST /auth/request-otp?id={userId}&email={userEmail}
+```
+
+**Validation:**
+- User must exist with provided ID and email combination
+- User status must be `PENDING` (already verified users rejected)
+- 6-digit OTP generated and stored in database
+- OTP expiry set to 5 minutes from generation time
+- OTP email sent to user's registered email address
+
+#### Step 3: OTP Verification (User)
+```http
+POST /auth/verify-otp?id={userId}&email={userEmail}&otp={6-digit-code}
+```
+
+**Verification Process:**
+- Validate user exists with provided ID and email
+- Check user status is `PENDING`
+- Verify OTP exists and hasn't been used
+- Validate OTP hasn't expired (5-minute window)
+- Match provided OTP with stored OTP
+- On success: Update status to `ACTIVE`, clear OTP fields
+- Send welcome email with login credentials
+
+#### Step 4: Login (User)
+```http
+POST /auth/login
+Content-Type: application/json
+
+{
+  "userName": "username",
+  "password": "password"
+}
+```
+
+**Login Requirements:**
+- User status must be `ACTIVE`
+- Valid credentials required
+- JWT token returned on successful authentication
+
+### OTP Security Features
+- **6-digit Secure OTP**: Generated using `SecureRandom`
+- **5-minute Expiry**: Automatic OTP expiration
+- **One-time Use**: OTP cleared after successful verification
+- **Email Delivery**: Sent via configured SMTP server
+- **Failed Attempts**: Invalid OTP rejected with appropriate message
+- **Account Status Tracking**: Clear PENDING → ACTIVE flow
+
+### Email Templates
+
+#### Account Creation Email
+- Subject: "Account Created - Verification Required"
+- Content: User ID, email, username, verification instructions
+
+#### OTP Email
+- Subject: "OTP Verification - User Management System"
+- Content: 6-digit OTP, validity period, security notice
+
+#### Welcome Email
+- Subject: "Welcome to User Management System!"
+- Content: Login credentials, user ID, system access information
+
+---
+
 ## 📊 Data Models
 
 ### User Entity
@@ -404,7 +510,7 @@ POST /auth/request-otp?id={id}&email={email}
   "email": "string (unique, validated)",
   "password": "string (BCrypt hashed)",
   "roles": ["string array (ROLE_USER, ROLE_ADMIN)"],
-  "status": "string (ACTIVE, INACTIVE, indexed)",
+  "status": "string (PENDING, ACTIVE, indexed)",
   "otp": "string (6-digit, indexed, for verification)",
   "otpExpiry": "LocalDateTime (OTP expiration time)"
 }
@@ -461,34 +567,90 @@ The application uses optimized indexes for performance:
 
 ## 📊 Activity Logging & Audit
 
-### Automatic Activity Logging
-- **AOP-Based Logging**: Automatic logging using Spring AOP
-- **@LogActivity Annotation**: Custom annotation for logging specific methods
-- **Comprehensive Tracking**: Logs user actions, IP addresses, timestamps
-- **Success/Failure Tracking**: Records both successful and failed operations
+### AOP-Based Logging System
+The application implements comprehensive activity logging using Spring AOP:
+
+#### @LogActivity Annotation
+```java
+@LogActivity(action="LOGIN", description="User login attempt")
+@PostMapping("/login")
+public String login(@RequestBody LoginDto dto) {
+    // Method implementation
+}
+```
+
+#### Automatic Log Capture
+- **User Identification**: Extracts user details from SecurityContext
+- **Request Context**: Captures IP address and User-Agent headers
+- **Method Details**: Logs method names and custom descriptions
+- **Success/Failure Tracking**: Automatic exception handling and error logging
+- **Timestamp**: Precise Instant-based timestamp for each action
+
+#### Logged Actions
+- **LOGIN**: User authentication attempts
+- **VERIFY_OTP**: Email verification via OTP
+- **REQUEST_OTP**: User requested OTP verification
+- **CREATE_USER**: Admin created new user
+- **VIEW_ALL_USERS**: Retrieved all users list
+- **VIEW_USER**: Retrieved specific user details
+- **DELETE_USER**: User account deletion
+- **UPDATE_PROFILE**: User profile updates
 
 ### Log Management Features
-- **MongoDB Storage**: Logs stored in dedicated `activity_logs` collection
-- **Automatic Indexing**: Optimized indexes for efficient querying
-- **Paginated Retrieval**: Efficient log browsing with pagination
-- **User-Specific Logs**: Filter logs by username
-- **Recent Activity**: Quick access to latest 50 activities
+
+#### MongoDB Storage Schema
+```json
+{
+  "id": "MongoDB ObjectId",
+  "userId": "string (user ID who performed action)",
+  "username": "string (username of user)",
+  "action": "string (type of action)",
+  "methodName": "string (method name called)",
+  "description": "string (action description)",
+  "ipAddress": "string (client IP address)",
+  "userAgent": "string (client user agent)",
+  "success": "boolean (action success status)",
+  "errorMessage": "string (error message if failed)",
+  "timestamp": "Instant (when action occurred)"
+}
+```
+
+#### Query Optimization
+- **Compound Indexes**: userId + timestamp for efficient user-specific queries
+- **Action Index**: Fast filtering by action types
+- **Username Index**: Quick user activity lookups
+- **Timestamp Index**: Efficient chronological sorting
+
+#### Admin Log Management Endpoints
+- `GET /admin/logs` - Paginated log retrieval with sorting
+- `GET /admin/logs/user/{username}` - User-specific activity logs
+- `GET /admin/logs/recent` - Latest 50 activities
+- `GET /admin/logs/stats` - Log statistics and metrics
+- `POST /admin/logs/cleanup` - Manual log cleanup trigger
 
 ### Log Cleanup Service
-- **Automated Cleanup**: Scheduled removal of old logs
-- **Configurable Retention**: Default 90-day retention period
-- **Batch Processing**: Efficient bulk deletion operations
-- **MongoDB Atlas Optimization**: Optimized for Atlas performance
-- **Manual Cleanup**: Admin-triggered cleanup available
 
-### Log Configuration
+#### Automated Cleanup
+- **Scheduled Service**: Automatic cleanup of old logs
+- **Configurable Retention**: 90-day default retention period
+- **Batch Processing**: 1000-record batches for efficient deletion
+- **MongoDB Atlas Optimized**: Bulk operations for cloud performance
+
+#### Cleanup Configuration
 ```yaml
-logging:
+activity-log:
   retention:
     days: 90
   cleanup:
     batch-size: 1000
+    enabled: true
 ```
+
+#### Performance Considerations
+- **Bulk Operations**: Uses MongoDB bulk write operations
+- **Index Utilization**: Optimized query plans for cleanup
+- **Memory Efficiency**: Streaming result processing
+- **Error Handling**: Comprehensive logging of cleanup operations
 
 ---
 
