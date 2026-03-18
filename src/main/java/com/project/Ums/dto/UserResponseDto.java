@@ -16,4 +16,5 @@ public class UserResponseDto {
     private String email;
     private List<String> roles = new ArrayList<>();
     private String status;
+    private String profilePhoto;
 }

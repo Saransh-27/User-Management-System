@@ -17,4 +17,5 @@ public class UserProfileDto {
     private String password;
     private List<String> roles = new ArrayList<>();
     private String status;
+    private String profilePhoto;
 }
