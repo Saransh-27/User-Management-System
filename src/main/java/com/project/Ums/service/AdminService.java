@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -38,6 +39,32 @@ public class AdminService {
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAll()
                 .stream()
+                .map(UserMapper::toResponse)
+                .toList();
+    }
+
+    public List<UserResponseDto> searchUsers(String query, String searchType) {
+        List<User> users;
+        
+        switch (searchType.toLowerCase()) {
+            case "name":
+            case "username":
+                users = userRepository.findByUserNameContainingIgnoreCase(query);
+                break;
+            case "email":
+                users = userRepository.findByEmailContainingIgnoreCase(query);
+                break;
+            case "id":
+                Optional<User> user = userRepository.findById(query);
+                users = user.isPresent() ? List.of(user.get()) : List.of();
+                break;
+            case "all":
+            default:
+                users = userRepository.findByUserNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+                break;
+        }
+        
+        return users.stream()
                 .map(UserMapper::toResponse)
                 .toList();
     }
