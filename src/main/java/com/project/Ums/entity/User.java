@@ -22,7 +22,7 @@ public class User {
     private String id;
     @Indexed
     private String userName;
-//    @Indexed(unique = true)
+    @Indexed(unique = true)
     private String email;
     private String password;
     private List<String> roles = new ArrayList<>();
@@ -31,4 +31,5 @@ public class User {
     @Indexed
     private String otp;
     private LocalDateTime otpExpiry;
+    private String profilePhoto;
 }
