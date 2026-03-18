@@ -67,23 +67,6 @@ public class AuthController {
         }
     }
 
-    @Operation(summary = "User registration", description = "Creates a new user account and sends OTP for email verification")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Registration successful - OTP sent"),
-            @ApiResponse(responseCode = "400", description = "Invalid input data or user already exists"),
-            @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
-    @LogActivity(action="REGISTER", description="User registration")
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody UserRequestDto dto) {
-        try {
-            adminService.addUser(dto);
-            return ResponseEntity.ok("Registration successful. Please check your email for OTP verification.");
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
     @Operation(summary = "Verify OTP", description = "Verifies user email using One-Time Password for account activation")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OTP verified successfully - Account activated"),
