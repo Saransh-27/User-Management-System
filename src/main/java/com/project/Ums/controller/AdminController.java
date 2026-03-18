@@ -15,6 +15,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/admin")
 @Tag(name = "Admin Management", description = "APIs for administrative user management operations")
@@ -40,7 +43,7 @@ public class AdminController {
         return ResponseEntity.ok("User added successfully. Account creation info sent to user's email for verification.");
     }
 
-    @Operation(summary = "Get all users", description = "Retrieves a list of all registered users")
+    @Operation(summary = "Get all users", description = "Retrieves a list of all registered users with essential information")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully retrieved user list"),
             @ApiResponse(responseCode = "403", description = "Access denied - Admin only"),
@@ -50,6 +53,22 @@ public class AdminController {
     @GetMapping("/all")
     public ResponseEntity<?> getAllUsers() {
         return new ResponseEntity<>(adminService.getAllUsers(), HttpStatus.OK);
+    }
+
+    @Operation(summary = "Search users", description = "Search users by name, email, or other criteria")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved search results"),
+            @ApiResponse(responseCode = "403", description = "Access denied - Admin only"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @LogActivity(action="SEARCH_USERS", description="Searched for users")
+    @GetMapping("/search")
+    public ResponseEntity<?> searchUsers(
+            @Parameter(description = "Search query - can be name, email, or user ID")
+            @RequestParam String query,
+            @Parameter(description = "Search type - name, email, or all")
+            @RequestParam(defaultValue = "all") String searchType) {
+        return new ResponseEntity<>(adminService.searchUsers(query, searchType), HttpStatus.OK);
     }
 
     @Operation(summary = "Get user by ID", description = "Retrieves specific user details by their unique ID")
