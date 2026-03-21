@@ -42,6 +42,13 @@ public class EmailService {
         log.info("OTP email sent to: {}", user.getEmail());
     }
 
+    public void sendVerificationEmail(User user, String verificationLink) {
+        String subject = "Verify Your Email Address";
+        String body = createVerificationMessage(user, verificationLink);
+        sendEmail(user.getEmail(), subject, body);
+        log.info("Verification email sent to: {}", user.getEmail());
+    }
+
     public void sendWelcomeEmail(User user) {
         String subject = "Welcome to User Management System!";
         String body = createWelcomeMessage(user);
@@ -73,6 +80,17 @@ public class EmailService {
                 "User Management System Team";
     }
 
+    private String createVerificationMessage(User user, String verificationLink) {
+        return "Dear " + user.getUserName() + ",\n\n" +
+                "Thank you for creating an account with the User Management System.\n\n" +
+                "Please click on the link below to verify your email address and activate your account:\n\n" +
+                verificationLink + "\n\n" +
+                "This verification link will expire in 24 hours.\n\n" +
+                "If you didn't create an account with us, please ignore this email.\n\n" +
+                "Best regards,\n" +
+                "User Management System Team";
+    }
+
     private String createWelcomeMessage(User user) {
         return "Dear " + user.getUserName() + ",\n\n" +
                 "Welcome to the User Management System!\n\n" +
@@ -80,6 +98,7 @@ public class EmailService {
                 "Username: " + user.getUserName() + "\n" +
                 "Password: " + "Same as UserName" + "\n" +
                 "User ID: " + user.getId() + "\n\n" +
+                "NOTE: Please update your password after first login.\n\n" +
                 "Please keep your User ID safe for future reference.\n\n" +
                 "You can now log in to your account and start using our services.\n\n" +
                 "If you have any questions or need assistance, please don't hesitate to contact us.\n\n" +
