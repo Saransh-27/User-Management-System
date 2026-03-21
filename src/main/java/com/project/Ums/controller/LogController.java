@@ -1,7 +1,7 @@
 package com.project.Ums.controller;
 
 import com.project.Ums.logging.ActivityLogRepository;
-import com.project.Ums.service.LogCleanupService;
+import com.project.Ums.logging.LogCleanupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +64,7 @@ public class LogController {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalLogs", logCleanupService.getLogCount());
         stats.put("oldLogs", logCleanupService.getOldLogCount());
-        stats.put("retentionDays", 90); // Default retention period
+        stats.put("retentionDays",10); // Default retention period
         return ResponseEntity.ok(stats);
     }
     
