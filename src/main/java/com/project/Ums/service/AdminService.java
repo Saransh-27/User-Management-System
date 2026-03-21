@@ -23,6 +23,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
+    private final VerificationService verificationService;
 
     public void addUser(UserRequestDto dto) {
         User user = UserMapper.toEntity(dto);
@@ -32,7 +33,10 @@ public class AdminService {
         }
         user.setStatus("PENDING");
         userRepository.save(user);
-        emailService.sendUserCreationEmail(user);
+        
+        // Create verification token and send verification email
+        verificationService.createVerificationToken(user);
+        
         log.info("User created: {} with roles: {}", user.getUserName(), user.getRoles());
     }
 
