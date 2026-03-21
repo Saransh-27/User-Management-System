@@ -1,7 +1,5 @@
-package com.project.Ums.service;
+package com.project.Ums.logging;
 
-import com.project.Ums.logging.ActivityLog;
-import com.project.Ums.logging.ActivityLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
