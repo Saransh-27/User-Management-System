@@ -61,7 +61,7 @@ public class OtpService {
         user.setOtpExpiry(null);
         userRepository.save(user);
         // Send welcome email with login credentials
-        emailService.sendWelcomeEmail(user);
+//        emailService.sendWelcomeEmail(user);
         return "OTP Verified Successfully! Welcome email with login credentials has been sent.";
     }
 }
