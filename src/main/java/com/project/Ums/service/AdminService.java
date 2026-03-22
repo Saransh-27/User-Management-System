@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -27,15 +28,18 @@ public class AdminService {
 
     public void addUser(UserRequestDto dto) {
         User user = UserMapper.toEntity(dto);
-        user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        String rawPassword = dto.getPassword(); // Keep original before hashing
+        user.setPassword(passwordEncoder.encode(rawPassword));
         if (user.getRoles() == null || user.getRoles().isEmpty()) {
             user.setRoles(List.of("USER"));
         }
         user.setStatus("PENDING");
+        user.setCreatedAt(LocalDateTime.now());
         userRepository.save(user);
         
         // Create verification token and send verification email
-        verificationService.createVerificationToken(user);
+        // Pass raw password so it can be included in welcome email after verification
+        verificationService.createVerificationToken(user, rawPassword);
         
         log.info("User created: {} with roles: {}", user.getUserName(), user.getRoles());
     }
