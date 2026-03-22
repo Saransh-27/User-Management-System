@@ -26,19 +26,20 @@ public class UserMapper {
                 .roles(user.getRoles())
                 .status(user.getStatus())
                 .profilePhoto(user.getProfilePhoto())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 
-    // Entity → User Profile (includes password)
+    // Entity → User Profile (no password exposed)
     public static UserProfileDto toProfile(User user) {
         return UserProfileDto.builder()
                 .id(user.getId().toString())
                 .userName(user.getUserName())
                 .email(user.getEmail())
-                .password(user.getPassword())
                 .roles(user.getRoles())
                 .status(user.getStatus())
                 .profilePhoto(user.getProfilePhoto())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }
