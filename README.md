@@ -71,7 +71,9 @@ src/main/java/com/project/Ums/
 │   ├── AdminController.java          # Admin-only user management endpoints
 │   ├── AuthController.java          # Authentication and JWT token generation
 │   ├── LogController.java          # Activity log management endpoints
-│   └── PublicController.java        # Public user endpoints
+│   ├── PublicController.java        # Public user endpoints
+│   ├── ReportController.java        # CSV reporting and analytics endpoints
+│   └── VerificationController.java  # Email verification endpoints
 ├── dto/
 │   ├── LoginDto.java               # Login request DTO
 │   ├── UserProfileDto.java         # User profile management DTO
@@ -96,7 +98,8 @@ src/main/java/com/project/Ums/
 │   ├── EmailService.java           # Email notification service
 │   ├── LogCleanupService.java      # Automated log cleanup service
 │   ├── OtpService.java             # OTP generation and verification
-│   └── UserDetailServiceImpl.java  # User details service for Spring Security
+│   ├── UserDetailServiceImpl.java  # User details service for Spring Security
+│   └── VerificationService.java    # Email verification token service
 └── utils/
     └── JwtUtil.java                # JWT token generation and validation utilities
 
@@ -324,6 +327,16 @@ Content-Type: application/json
 }
 ```
 
+#### Search Users
+```http
+GET /admin/search?query=john&searchType=all
+Authorization: Bearer <jwt-token>
+```
+
+**Parameters:**
+- `query` (required): Search term - can be name, email, or user ID
+- `searchType` (optional): Search type - `name`, `email`, or `all` (default)
+
 #### Get All Users
 ```http
 GET /admin/all
@@ -391,9 +404,50 @@ Content-Type: application/json
 {
   "userName": "updated_username",
   "email": "updated@example.com",
-  "password": "new_password123"
+  "password": "new_password123",
+  "currentPassword": "current_password123"
 }
 ```
+
+#### Change Password
+```http
+PUT /public/change-password
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
+
+{
+  "currentPassword": "current_password123",
+  "newPassword": "new_password456"
+}
+```
+
+#### Upload Profile Photo
+```http
+POST /public/upload-profile-photo
+Authorization: Bearer <jwt-token>
+Content-Type: multipart/form-data
+
+file: [image file (max 5MB, image/* only)]
+```
+
+**Response:** User profile with updated photo URL
+
+#### Get Profile Photo
+```http
+GET /public/profile-photos/{filename}
+```
+
+**Response:** Image file with appropriate Content-Type header
+
+#### Get My Activity Logs
+```http
+GET /public/my-logs?page=0&size=20
+Authorization: Bearer <jwt-token>
+```
+
+**Parameters:**
+- `page` (optional): Page number (default: 0)
+- `size` (optional): Page size (default: 20)
 
 #### Delete User Account
 ```http
@@ -415,12 +469,56 @@ POST /auth/verify-otp?id={id}&email={email}&otp={otp}
 
 #### Request OTP
 ```http
-POST /auth/request-otp?id={id}&email={email}
+POST /auth/resend-otp?id={id}&email={email}
 ```
 
 **Parameters:**
 - `id` (path param): User ID
 - `email` (path param): User email address
+
+---
+
+## 📊 Reporting & Analytics
+
+### CSV Report Generation
+The system provides comprehensive reporting capabilities with CSV export functionality.
+
+#### System Report
+```http
+GET /admin/reports/system
+Authorization: Bearer <jwt-token>
+```
+
+**Includes:**
+- System summary with user statistics
+- All users with roles and status
+- Recent 500 activity logs
+- Generated timestamp
+
+#### Users Report
+```http
+GET /admin/reports/users
+Authorization: Bearer <jwt-token>
+```
+
+**Includes:**
+- Complete user list
+- User details: ID, username, email, roles, status, creation date
+
+#### Activity Logs Report
+```http
+GET /admin/reports/activity-logs
+Authorization: Bearer <jwt-token>
+```
+
+**Includes:**
+- Recent 1000 activity logs
+- Log details: username, action, description, timestamp, success status, IP address, user agent
+
+**Response Format:**
+- Content-Type: `text/csv`
+- Content-Disposition: `attachment; filename="UMS_Report_YYYYMMDD_HHMMSS.csv"`
+- Proper CSV escaping for commas, quotes, and newlines
 
 ---
 
@@ -512,7 +610,21 @@ Content-Type: application/json
   "roles": ["string array (ROLE_USER, ROLE_ADMIN)"],
   "status": "string (PENDING, ACTIVE, indexed)",
   "otp": "string (6-digit, indexed, for verification)",
-  "otpExpiry": "LocalDateTime (OTP expiration time)"
+  "otpExpiry": "LocalDateTime (OTP expiration time)",
+  "profilePhoto": "string (path to uploaded profile photo)",
+  "createdAt": "LocalDateTime (account creation timestamp)"
+}
+```
+
+### VerificationToken Entity
+```json
+{
+  "id": "string (MongoDB ObjectId)",
+  "token": "string (unique verification token)",
+  "userEmail": "string (associated user email)",
+  "expiryDate": "LocalDateTime (token expiration)",
+  "verified": "boolean (verification status)",
+  "createdAt": "LocalDateTime (token creation timestamp)"
 }
 ```
 
@@ -542,6 +654,22 @@ Content-Type: application/json
 - `password`: String
 - `roles`: List<String>
 - `status`: String
+- `profilePhoto`: String (path to profile photo)
+- `createdAt`: LocalDateTime
+
+#### LoginResponseDto
+- `token`: String (JWT authentication token)
+- `user`: UserProfileDto (authenticated user details)
+
+#### UserUpdateDto
+- `userName`: String (optional)
+- `email`: String (optional)
+- `password`: String (optional)
+- `currentPassword`: String (required when updating password)
+
+#### VerificationResponse
+- `message`: String (verification result message)
+- `success`: Boolean (verification status)
 
 ### Activity Log Entity
 ```json
@@ -903,20 +1031,29 @@ For support and queries:
 - [x] User status management (ACTIVE/INACTIVE)
 - [x] MongoDB Atlas optimization
 - [x] Comprehensive audit trails
+- [x] **Profile photo upload system**
+- [x] **Advanced user search functionality**
+- [x] **CSV reporting and analytics**
+- [x] **Password change with current password verification**
+- [x] **Email verification token system**
+- [x] **User activity self-service logs**
+- [x] **Secure file upload with validation**
 
 ### Upcoming Features
 - [ ] Password reset functionality
 - [ ] Account email verification improvements
-- [ ] User profile image upload
+- [ ] **Enhanced profile management (bio, social links, etc.)**
 - [ ] Rate limiting for API endpoints
 - [ ] Multi-factor authentication (MFA)
 - [ ] OAuth2 integration (Google, GitHub)
-- [ ] Advanced user search and filtering
+- [ ] **Advanced user search with filters and pagination**
 - [ ] Bulk user operations
-- [ ] User activity dashboard
+- [ ] User activity dashboard with charts
 - [ ] GraphQL API support
 - [ ] Redis caching for improved performance
 - [ ] Microservices architecture migration
+- [ ] **Real-time notifications system**
+- [ ] **Data export in multiple formats (JSON, XML, PDF)**
 
 ### Technical Improvements
 - [ ] Comprehensive unit and integration tests
