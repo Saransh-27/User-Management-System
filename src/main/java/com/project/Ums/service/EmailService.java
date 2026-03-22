@@ -49,9 +49,9 @@ public class EmailService {
         log.info("Verification email sent to: {}", user.getEmail());
     }
 
-    public void sendWelcomeEmail(User user) {
+    public void sendWelcomeEmail(User user, String rawPassword) {
         String subject = "Welcome to User Management System!";
-        String body = createWelcomeMessage(user);
+        String body = createWelcomeMessage(user, rawPassword);
         sendEmail(user.getEmail(), subject, body);
         log.info("Welcome email sent to: {}", user.getEmail());
     }
@@ -91,15 +91,19 @@ public class EmailService {
                 "User Management System Team";
     }
 
-    private String createWelcomeMessage(User user) {
+    private String createWelcomeMessage(User user, String rawPassword) {
+        String passwordDisplay = (rawPassword != null && !rawPassword.isBlank())
+                ? rawPassword
+                : "(Set during registration)";
+        
         return "Dear " + user.getUserName() + ",\n\n" +
                 "Welcome to the User Management System!\n\n" +
                 "Your account has been successfully verified and activated. You can now login with the following credentials:\n\n" +
                 "Username: " + user.getUserName() + "\n" +
-                "Password: " + "Same as UserName" + "\n" +
+                "Password: " + passwordDisplay + "\n" +
                 "User ID: " + user.getId() + "\n\n" +
-                "NOTE: Please update your password after first login.\n\n" +
-                "Please keep your User ID safe for future reference.\n\n" +
+                "IMPORTANT: For security reasons, we strongly recommend changing your password after your first login.\n\n" +
+                "Please keep your credentials safe and do not share them with anyone.\n\n" +
                 "You can now log in to your account and start using our services.\n\n" +
                 "If you have any questions or need assistance, please don't hesitate to contact us.\n\n" +
                 "Best regards,\n" +
