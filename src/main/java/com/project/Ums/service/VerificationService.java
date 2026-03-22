@@ -31,7 +31,7 @@ public class VerificationService {
     
     private final SecureRandom random = new SecureRandom();
 
-    public String createVerificationToken(User user) {
+    public String createVerificationToken(User user, String rawPassword) {
         // Delete any existing tokens for this user
         verificationTokenRepository.deleteByUserId(user.getId());
         
@@ -42,6 +42,7 @@ public class VerificationService {
                 .token(token)
                 .userId(user.getId())
                 .email(user.getEmail())
+                .rawPassword(rawPassword) // Store raw password for welcome email
                 .expiryDate(LocalDateTime.now().plusHours(24)) // Token valid for 24 hours
                 .verified(false)
                 .build();
@@ -85,8 +86,13 @@ public class VerificationService {
         verificationToken.setVerified(true);
         verificationTokenRepository.save(verificationToken);
         
-        // Send welcome email
-        emailService.sendWelcomeEmail(user);
+        // Send welcome email with the original password
+        String rawPassword = verificationToken.getRawPassword();
+        emailService.sendWelcomeEmail(user, rawPassword);
+        
+        // Clear the raw password from the token after sending the email (security)
+        verificationToken.setRawPassword(null);
+        verificationTokenRepository.save(verificationToken);
         
         log.info("User verified successfully: {}", user.getEmail());
         return "User verified successfully";
