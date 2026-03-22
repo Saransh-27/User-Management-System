@@ -1,8 +1,10 @@
 package com.project.Ums.controller;
 
-import com.project.Ums.dto.UserRequestDto;
+import com.project.Ums.dto.UserUpdateDto;
 import com.project.Ums.entity.User;
 import com.project.Ums.logging.LogActivity;
+import com.project.Ums.logging.ActivityLog;
+import com.project.Ums.logging.ActivityLogRepository;
 import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +15,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,11 +26,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.project.Ums.utils.JwtUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 
@@ -39,6 +48,10 @@ public class PublicController {
     private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private ActivityLogRepository activityLogRepository;
+    @Autowired
+    private JwtUtil jwtUtil;
     
     private static final String UPLOAD_DIR = "uploads/profile-photos/";
 
@@ -59,28 +72,99 @@ public class PublicController {
         return new ResponseEntity<>(UserMapper.toProfile(user), HttpStatus.OK);
     }
 
-    @Operation(summary = "Update user profile", description = "Updates the current authenticated user's profile information")
+    @Operation(summary = "Update user profile", description = "Partially updates the current authenticated user's profile. Only non-null fields are updated.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "202", description = "Profile updated successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid input data"),
             @ApiResponse(responseCode = "401", description = "Unauthorized - Invalid or missing token"),
             @ApiResponse(responseCode = "404", description = "User not found"),
+            @ApiResponse(responseCode = "409", description = "Duplicate email or username"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @LogActivity(action="UPDATE_PROFILE", description="Updated own profile")
     @PutMapping("/update-user")
     public ResponseEntity<?> updateUser(
             @Parameter(description = "Updated user profile information", required = true)
-            @RequestBody UserRequestDto dto){
+            @RequestBody UserUpdateDto dto){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
         User userInDb = userRepository.findByUserName(userName)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Partial update: only update fields that are provided (non-null and non-blank)
+        boolean usernameChanged = false;
+        if (dto.getUserName() != null && !dto.getUserName().isBlank()) {
+            if (!dto.getUserName().equals(userInDb.getUserName())) {
+                usernameChanged = true;
+            }
             userInDb.setUserName(dto.getUserName());
-            userInDb.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
             userInDb.setEmail(dto.getEmail());
+        }
+        // Password update requires currentPassword verification
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            if (dto.getCurrentPassword() == null || dto.getCurrentPassword().isBlank()) {
+                throw new IllegalArgumentException("Current password is required to set a new password");
+            }
+            if (!passwordEncoder.matches(dto.getCurrentPassword(), userInDb.getPassword())) {
+                throw new IllegalArgumentException("Current password is incorrect");
+            }
+            userInDb.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
         User updatedUser = userRepository.save(userInDb);
-        return new ResponseEntity<>(UserMapper.toProfile(updatedUser), HttpStatus.ACCEPTED);
+
+        // Build response with profile data
+        Map<String, Object> response = new HashMap<>();
+        response.put("user", UserMapper.toProfile(updatedUser));
+
+        // If username changed, issue a new JWT token so the session doesn't break
+        if (usernameChanged) {
+            String newToken = jwtUtil.generateToken(updatedUser.getUserName());
+            response.put("token", newToken);
+        }
+
+        return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
+    }
+
+    @Operation(summary = "Change password", description = "Changes the current user's password after verifying the current password")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password changed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid current password or weak new password"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    @LogActivity(action="CHANGE_PASSWORD", description="Changed password")
+    @PutMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userName = authentication.getName();
+        User user = userRepository.findByUserName(userName)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new IllegalArgumentException("Current password is required");
+        }
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new IllegalArgumentException("New password is required");
+        }
+        if (newPassword.length() < 6) {
+            throw new IllegalArgumentException("New password must be at least 6 characters");
+        }
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Password changed successfully");
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Upload profile photo", description = "Uploads a profile photo for the current authenticated user")
@@ -102,15 +186,15 @@ public class PublicController {
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body("Please select a file to upload");
+                throw new IllegalArgumentException("Please select a file to upload");
             }
 
             if (!file.getContentType().startsWith("image/")) {
-                return ResponseEntity.badRequest().body("Only image files are allowed");
+                throw new IllegalArgumentException("Only image files are allowed");
             }
 
             if (file.getSize() > 5 * 1024 * 1024) { // 5MB limit
-                return ResponseEntity.badRequest().body("File size should be less than 5MB");
+                throw new IllegalArgumentException("File size should be less than 5MB");
             }
 
             // Create upload directory if it doesn't exist
@@ -131,15 +215,14 @@ public class PublicController {
             Files.copy(file.getInputStream(), filePath);
 
             // Update user profile with photo path
-            String photoUrl = "http://localhost:8080/public/profile-photos/" + uniqueFilename;
+            String photoUrl = "/public/profile-photos/" + uniqueFilename;
             user.setProfilePhoto(photoUrl);
             userRepository.save(user);
 
             return ResponseEntity.ok(UserMapper.toProfile(user));
         } catch (IOException e) {
             log.error("Error uploading profile photo", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to upload profile photo");
+            throw new RuntimeException("Failed to upload profile photo. Please try again.");
         }
     }
 
@@ -176,8 +259,24 @@ public class PublicController {
     public ResponseEntity<?> deleteUser(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        userRepository.deleteUserByUserName(userName);
-        return ResponseEntity.ok("User Deleted successfully");
+        User user = userRepository.findByUserName(userName)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        userRepository.delete(user);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Account deleted successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Get my activity logs", description = "Retrieves the current user's own activity logs")
+    @GetMapping("/my-logs")
+    public ResponseEntity<?> getMyLogs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userName = authentication.getName();
+        Pageable pageable = PageRequest.of(page, size, Sort.by("timestamp").descending());
+        Page<ActivityLog> logs = activityLogRepository.findByUsername(userName, pageable);
+        return ResponseEntity.ok(logs);
     }
 
 }

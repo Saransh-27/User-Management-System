@@ -2,6 +2,7 @@ package com.project.Ums.dto;
 
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,8 +15,9 @@ public class UserProfileDto {
     private String id;
     private String userName;
     private String email;
-    private String password;
+    @Builder.Default
     private List<String> roles = new ArrayList<>();
     private String status;
     private String profilePhoto;
+    private LocalDateTime createdAt;
 }
