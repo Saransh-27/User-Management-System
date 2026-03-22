@@ -20,6 +20,7 @@ public class VerificationToken {
     private String token;
     private String userId;
     private String email;
+    private String rawPassword; // Temporarily stored until welcome email is sent
     private LocalDateTime expiryDate;
     private boolean verified;
     
