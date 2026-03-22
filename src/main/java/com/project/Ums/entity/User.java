@@ -25,6 +25,7 @@ public class User {
     @Indexed(unique = true)
     private String email;
     private String password;
+    @Builder.Default
     private List<String> roles = new ArrayList<>();
     @Indexed
     private String status;
@@ -32,4 +33,5 @@ public class User {
     private String otp;
     private LocalDateTime otpExpiry;
     private String profilePhoto;
+    private LocalDateTime createdAt;
 }
