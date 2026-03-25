@@ -3,6 +3,7 @@ package com.project.Ums.service;
 import com.project.Ums.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -14,10 +15,17 @@ import org.springframework.stereotype.Service;
 public class EmailService {
     @Autowired
     private JavaMailSender javaMailSender;
+    
+    @Value("${EMAIL_FROM:noreply@ums.com}")
+    private String emailFrom;
+    
+    @Value("${EMAIL_TEAM_NAME:User Management System Team}")
+    private String teamName;
 
     public void sendEmail(String to, String subject, String body){
         try{
             SimpleMailMessage mail = new SimpleMailMessage();
+            mail.setFrom(emailFrom);
             mail.setTo(to);
             mail.setSubject(subject);
             mail.setText(body);
@@ -54,6 +62,13 @@ public class EmailService {
         String body = createWelcomeMessage(user, rawPassword);
         sendEmail(user.getEmail(), subject, body);
         log.info("Welcome email sent to: {}", user.getEmail());
+    }
+
+    public void sendPasswordResetEmail(String email, String resetToken) {
+        String subject = "Password Reset Request - User Management System";
+        String body = createPasswordResetMessage(resetToken);
+        sendEmail(email, subject, body);
+        log.info("Password reset email sent to: {}", email);
     }
 
     private String createUserCreationMessage(User user) {
@@ -106,6 +121,22 @@ public class EmailService {
                 "Please keep your credentials safe and do not share them with anyone.\n\n" +
                 "You can now log in to your account and start using our services.\n\n" +
                 "If you have any questions or need assistance, please don't hesitate to contact us.\n\n" +
+                "Best regards,\n" +
+                "User Management System Team";
+    }
+
+    private String createPasswordResetMessage(String resetToken) {
+        return "Dear User,\n\n" +
+                "We received a request to reset your password for your User Management System account.\n\n" +
+                "To reset your password, use the following token:\n\n" +
+                "Reset Token: " + resetToken + "\n\n" +
+                "You can also visit: http://localhost:5173/reset-password?token=" + resetToken + "\n\n" +
+                "This token will expire in 1 hour for security reasons.\n\n" +
+                "If you didn't request a password reset, please ignore this email or contact support immediately.\n\n" +
+                "For security, please:\n" +
+                "- Choose a strong password with at least 6 characters\n" +
+                "- Don't reuse old passwords\n" +
+                "- Keep your password confidential\n\n" +
                 "Best regards,\n" +
                 "User Management System Team";
     }
