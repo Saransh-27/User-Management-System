@@ -65,22 +65,44 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 src/main/java/com/project/Ums/
 ├── UmsApplication.java              # Main Spring Boot application class
 ├── config/
-│   ├── SpringSecurity.java          # Security configuration and JWT setup
-│   └── SwaggerConfig.java           # Swagger configuration and API documentation
+│   ├── CorsConfig.java             # CORS configuration for cross-origin requests
+│   ├── SpringSecurity.java         # Security configuration and JWT setup
+│   └── SwaggerConfig.java          # Swagger configuration and API documentation
 ├── controller/
-│   ├── AdminController.java          # Admin-only user management endpoints
-│   ├── AuthController.java          # Authentication and JWT token generation
+│   ├── AdminController.java        # Admin-only user management endpoints
+│   ├── AuthController.java         # Authentication, JWT, and password reset endpoints
 │   ├── LogController.java          # Activity log management endpoints
-│   ├── PublicController.java        # Public user endpoints
-│   ├── ReportController.java        # CSV reporting and analytics endpoints
-│   └── VerificationController.java  # Email verification endpoints
+│   ├── PublicController.java       # Public user endpoints
+│   ├── ReportController.java       # CSV reporting and analytics endpoints
+│   └── VerificationController.java # Email verification endpoints
 ├── dto/
+│   ├── ApiResponse.java            # Generic API response wrapper
+│   ├── ErrorResponse.java          # Error response DTO with validation mapping
+│   ├── ForgotPasswordDto.java      # Forgot password request DTO with validation
 │   ├── LoginDto.java               # Login request DTO
+│   ├── LoginResponse.java          # Login response with JWT token
+│   ├── ResetPasswordDto.java       # Reset password request DTO with validation
 │   ├── UserProfileDto.java         # User profile management DTO
 │   ├── UserRequestDto.java         # User creation/update DTO with validation
-│   └── UserResponseDto.java        # User response DTO
+│   ├── UserResponseDto.java        # User response DTO
+│   ├── UserUpdateDto.java          # User profile update DTO
+│   └── VerificationResponse.java   # Email verification response DTO
 ├── entity/
-│   └── User.java                   # MongoDB User entity with roles and OTP
+│   ├── PasswordResetToken.java     # Password reset token entity with expiry tracking
+│   ├── User.java                   # MongoDB User entity with roles and OTP
+│   └── VerificationToken.java      # Email verification token entity
+├── exception/
+│   ├── AccountVerificationException.java    # Account verification error handler
+│   ├── EmailServiceException.java           # Email service failure handler
+│   ├── FileUploadException.java             # File upload operation handler
+│   ├── GlobalExceptionHandler.java          # Global exception handler
+│   ├── InsufficientPermissionException.java # Permission access handler
+│   ├── InvalidPasswordException.java        # Invalid password handler
+│   ├── InvalidTokenException.java           # Invalid token handler
+│   ├── PasswordResetException.java          # Password reset operation handler
+│   ├── ResourceNotFoundException.java       # Resource not found handler
+│   ├── TokenExpiredException.java           # Token expiry handler
+│   └── UserNotFoundException.java           # User lookup failure handler
 ├── filter/
 │   └── JwtFilter.java              # JWT authentication filter
 ├── logging/
@@ -92,12 +114,14 @@ src/main/java/com/project/Ums/
 ├── mapper/
 │   └── UserMapper.java             # Entity-DTO mapping utilities
 ├── repository/
+│   ├── PasswordResetTokenRepository.java # Password reset token repository
 │   └── UserRepository.java         # MongoDB repository interface
 ├── service/
 │   ├── AdminService.java           # Admin business logic
 │   ├── EmailService.java           # Email notification service
 │   ├── LogCleanupService.java      # Automated log cleanup service
 │   ├── OtpService.java             # OTP generation and verification
+│   ├── PasswordResetService.java  # Complete password reset service
 │   ├── UserDetailServiceImpl.java  # User details service for Spring Security
 │   └── VerificationService.java    # Email verification token service
 └── utils/
@@ -282,10 +306,12 @@ http://localhost:8081
 
 | Controller | Base Path | Authentication | Description |
 |------------|-----------|----------------|-------------|
-| AuthController | `/auth` | Public | Login and OTP verification |
+| AuthController | `/auth` | Public | Login, OTP verification, and password reset |
 | AdminController | `/admin` | ADMIN role | User management operations |
 | PublicController | `/public` | Authenticated users | User profile management |
 | LogController | `/admin/logs` | ADMIN role | Activity log management |
+| ReportController | `/admin/reports` | ADMIN role | CSV reporting and analytics |
+| VerificationController | `/auth` | Public | Email verification endpoints |
 
 ### Authentication Endpoints
 
@@ -476,6 +502,69 @@ POST /auth/resend-otp?id={id}&email={email}
 - `id` (path param): User ID
 - `email` (path param): User email address
 
+### Password Reset Endpoints
+
+#### Forgot Password
+```http
+POST /auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Password reset link has been sent to your email address"
+}
+```
+
+**Process:**
+- Validates email exists in database
+- Generates unique UUID token
+- Invalidates any existing tokens for the user
+- Sends password reset email with token
+- Token expires in 1 hour
+
+#### Reset Password
+```http
+POST /auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "uuid-token-here",
+  "newPassword": "newSecurePassword123"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Password has been reset successfully"
+}
+```
+
+**Process:**
+- Validates token exists and is unused
+- Checks token hasn't expired
+- Updates user password with BCrypt encryption
+- Marks token as used
+- Cleans up any other tokens for the user
+
+#### Validate Reset Token
+```http
+GET /auth/validate-reset-token?token={token}
+```
+
+**Response:**
+```json
+{
+  "valid": true
+}
+```
+
 ---
 
 ## 📊 Reporting & Analytics
@@ -616,6 +705,18 @@ Content-Type: application/json
 }
 ```
 
+### PasswordResetToken Entity
+```json
+{
+  "id": "string (MongoDB ObjectId)",
+  "token": "string (unique UUID token)",
+  "userId": "string (associated user ID)",
+  "expiryDate": "LocalDateTime (token expiration - 1 hour)",
+  "used": "boolean (token usage status)",
+  "createdAt": "LocalDateTime (token creation timestamp)"
+}
+```
+
 ### VerificationToken Entity
 ```json
 {
@@ -630,16 +731,41 @@ Content-Type: application/json
 
 ### DTOs
 
+#### ApiResponse
+- `message`: String (response message)
+- `status`: Integer (HTTP status code)
+- `data`: T (generic response data)
+- `timestamp`: LocalDateTime (response timestamp)
+- `success`: Boolean (operation success status)
+
+#### ErrorResponse
+- `message`: String (error message)
+- `status`: Integer (HTTP status code)
+- `error`: String (error type)
+- `timestamp`: LocalDateTime (error timestamp)
+- `errors`: Map<String, String> (validation errors)
+
+#### ForgotPasswordDto
+- `email`: String (required, @Email, @NotBlank)
+
+#### LoginDto
+- `userName`: String
+- `password`: String
+
+#### LoginResponse
+- `token`: String (JWT authentication token)
+- `user`: UserProfileDto (authenticated user details)
+
+#### ResetPasswordDto
+- `token`: String (required, @NotBlank)
+- `newPassword`: String (required, @Size min=6)
+
 #### UserRequestDto
 - `id`: String (optional for updates)
 - `userName`: String (required, @NotBlank)
 - `email`: String (required, @Email, @NotBlank)
 - `password`: String (required, @NotBlank)
 - `roles`: List<String> (default: empty)
-
-#### LoginDto
-- `userName`: String
-- `password`: String
 
 #### UserResponseDto
 - `id`: String
@@ -656,10 +782,6 @@ Content-Type: application/json
 - `status`: String
 - `profilePhoto`: String (path to profile photo)
 - `createdAt`: LocalDateTime
-
-#### LoginResponseDto
-- `token`: String (JWT authentication token)
-- `user`: UserProfileDto (authenticated user details)
 
 #### UserUpdateDto
 - `userName`: String (optional)
@@ -692,6 +814,8 @@ Content-Type: application/json
 The application uses optimized indexes for performance:
 - **Users Collection**: userName, email, status, otp
 - **Activity Logs Collection**: userId, username, timestamp, action
+- **Password Reset Tokens Collection**: token (unique), userId
+- **Verification Tokens Collection**: token (unique), userEmail
 
 ## 📊 Activity Logging & Audit
 
@@ -788,6 +912,13 @@ activity-log:
 - **Registration Email**: Sends OTP for user verification
 - **Welcome Email**: Sends login credentials after successful verification
 - **Password Notifications**: Email notifications for password changes
+- **Password Reset Emails**: Sends secure reset tokens with expiry information
+
+### Password Reset Email System
+- **Secure Token Generation**: UUID-based tokens with 1-hour expiry
+- **Email Delivery**: Reset instructions sent via configured SMTP
+- **Security Features**: Token invalidation after use, automatic cleanup
+- **User-Friendly**: Direct reset links and clear instructions
 
 ### OTP Verification System
 - **6-digit OTP**: Secure one-time password generation
@@ -1038,9 +1169,9 @@ For support and queries:
 - [x] **Email verification token system**
 - [x] **User activity self-service logs**
 - [x] **Secure file upload with validation**
+- [x] **Complete password reset functionality with token-based email verification**
 
 ### Upcoming Features
-- [ ] Password reset functionality
 - [ ] Account email verification improvements
 - [ ] **Enhanced profile management (bio, social links, etc.)**
 - [ ] Rate limiting for API endpoints

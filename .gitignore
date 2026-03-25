@@ -1,4 +1,5 @@
 HELP.md
+src/main/java/com/project/Ums/.env
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -43,12 +44,3 @@ build/
 ### VS Code ###
 .vscode/
 
-#yml
-*.yaml
-*.yml
-
-# Spring Boot secret configs
-application.yaml
-application.yml
-src/main/resources/application.yaml
-src/main/resources/application.yml
