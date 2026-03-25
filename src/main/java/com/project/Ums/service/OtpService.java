@@ -4,6 +4,7 @@ import com.project.Ums.entity.User;
 import com.project.Ums.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -17,6 +18,9 @@ public class OtpService {
     private UserRepository userRepository;
     @Autowired
     private EmailService emailService;
+    
+    @Value("${OTP_EXPIRY_MINUTES:5}")
+    private int otpExpiryMinutes;
     private final SecureRandom random = new SecureRandom();
 
     public void sendOtpOnRequest(String id, String email) {
@@ -27,7 +31,7 @@ public class OtpService {
         }
         String otp = generateOtp();
         user.setOtp(otp);
-        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(otpExpiryMinutes));
         userRepository.save(user);
         // Send OTP email
         emailService.sendOTPEmail(user, otp);
