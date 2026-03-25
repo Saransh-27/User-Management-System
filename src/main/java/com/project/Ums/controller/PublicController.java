@@ -2,6 +2,9 @@ package com.project.Ums.controller;
 
 import com.project.Ums.dto.UserUpdateDto;
 import com.project.Ums.entity.User;
+import com.project.Ums.exception.FileUploadException;
+import com.project.Ums.exception.InvalidPasswordException;
+import com.project.Ums.exception.UserNotFoundException;
 import com.project.Ums.logging.LogActivity;
 import com.project.Ums.logging.ActivityLog;
 import com.project.Ums.logging.ActivityLogRepository;
@@ -68,7 +71,7 @@ public class PublicController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
         User user = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         return new ResponseEntity<>(UserMapper.toProfile(user), HttpStatus.OK);
     }
 
@@ -89,7 +92,7 @@ public class PublicController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
         User userInDb = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         // Partial update: only update fields that are provided (non-null and non-blank)
         boolean usernameChanged = false;
@@ -105,10 +108,10 @@ public class PublicController {
         // Password update requires currentPassword verification
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             if (dto.getCurrentPassword() == null || dto.getCurrentPassword().isBlank()) {
-                throw new IllegalArgumentException("Current password is required to set a new password");
+                throw new InvalidPasswordException("Current password is required to set a new password");
             }
             if (!passwordEncoder.matches(dto.getCurrentPassword(), userInDb.getPassword())) {
-                throw new IllegalArgumentException("Current password is incorrect");
+                throw new InvalidPasswordException("Current password is incorrect");
             }
             userInDb.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
@@ -141,7 +144,7 @@ public class PublicController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
         User user = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         String currentPassword = request.get("currentPassword");
         String newPassword = request.get("newPassword");
@@ -153,10 +156,10 @@ public class PublicController {
             throw new IllegalArgumentException("New password is required");
         }
         if (newPassword.length() < 6) {
-            throw new IllegalArgumentException("New password must be at least 6 characters");
+            throw new InvalidPasswordException("New password must be at least 6 characters");
         }
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new IllegalArgumentException("Current password is incorrect");
+            throw new InvalidPasswordException("Current password is incorrect");
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
@@ -183,18 +186,18 @@ public class PublicController {
             String userName = authentication.getName();
             
             User user = userRepository.findByUserName(userName)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
 
             if (file.isEmpty()) {
-                throw new IllegalArgumentException("Please select a file to upload");
+                throw new FileUploadException("Please select a file to upload");
             }
 
             if (!file.getContentType().startsWith("image/")) {
-                throw new IllegalArgumentException("Only image files are allowed");
+                throw new FileUploadException("Only image files are allowed");
             }
 
             if (file.getSize() > 5 * 1024 * 1024) { // 5MB limit
-                throw new IllegalArgumentException("File size should be less than 5MB");
+                throw new FileUploadException("File size should be less than 5MB");
             }
 
             // Create upload directory if it doesn't exist
@@ -222,7 +225,7 @@ public class PublicController {
             return ResponseEntity.ok(UserMapper.toProfile(user));
         } catch (IOException e) {
             log.error("Error uploading profile photo", e);
-            throw new RuntimeException("Failed to upload profile photo. Please try again.");
+            throw new FileUploadException("Failed to upload profile photo. Please try again.");
         }
     }
 
@@ -260,7 +263,7 @@ public class PublicController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
         User user = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         userRepository.delete(user);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Account deleted successfully");
