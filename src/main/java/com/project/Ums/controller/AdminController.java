@@ -65,9 +65,9 @@ public class AdminController {
     @GetMapping("/search")
     public ResponseEntity<?> searchUsers(
             @Parameter(description = "Search query - can be name, email, or user ID")
-            @RequestParam String query,
+            @RequestParam("query") String query,
             @Parameter(description = "Search type - name, email, or all")
-            @RequestParam(defaultValue = "all") String searchType) {
+            @RequestParam(value = "searchType", defaultValue = "all") String searchType) {
         return new ResponseEntity<>(adminService.searchUsers(query, searchType), HttpStatus.OK);
     }
 
