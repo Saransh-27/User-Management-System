@@ -1,0 +1,47 @@
+
+spring:
+  application:
+    name: ums
+
+  data:
+    mongodb:
+      uri: ${MONGO_URI}
+      database: ums
+      auto-index-creation: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  logging:
+    level:
+      root: INFO
+      com.project.Ums: DEBUG
+      org.springframework.web: DEBUG
+      org.springframework.web.servlet.DispatcherServlet: DEBUG
+      org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+      org.mongodb.driver: INFO
+
+    retention:
+      days: ${LOG_RETENTION_DAYS}
+    cleanup:
+      batch-size: ${LOG_CLEANUP_BATCH_SIZE}
+
+  task:
+      scheduling:
+        pool:
+          size: 2
+server:
+  port: ${PORT:8080}
+
+jwt:
+  secret: ${JWT_SECRET}
+
