@@ -1,5 +1,6 @@
 package com.project.Ums.utils;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -12,7 +13,11 @@ import java.util.Map;
 @Component
 public class JwtUtil {
 
-    private String SECRET_KEY = "TaK+HaV^uvCHEFsEVfypW#7g9^k*Z8$V";
+    @Value("${JWT_SECRET}")
+    private String SECRET_KEY;
+
+    @Value("${JWT_EXPIRATION_MS:3600000}")
+    private long expirationTime;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
@@ -51,7 +56,7 @@ public class JwtUtil {
                 .header().empty().add("typ","JWT")
                 .and()
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 5 minutes expiration time
+                .expiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(getSigningKey())
                 .compact();
     }
