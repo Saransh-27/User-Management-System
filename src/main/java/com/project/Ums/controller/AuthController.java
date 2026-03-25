@@ -1,7 +1,11 @@
 package com.project.Ums.controller;
 
+import com.project.Ums.dto.ForgotPasswordDto;
 import com.project.Ums.dto.LoginDto;
 import com.project.Ums.dto.LoginResponse;
+import com.project.Ums.dto.ResetPasswordDto;
+import com.project.Ums.exception.UserNotFoundException;
+import com.project.Ums.exception.InvalidTokenException;
 import com.project.Ums.dto.UserRequestDto;
 import com.project.Ums.entity.User;
 import com.project.Ums.logging.LogActivity;
@@ -9,6 +13,7 @@ import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.UserRepository;
 import com.project.Ums.service.AdminService;
 import com.project.Ums.service.OtpService;
+import com.project.Ums.service.PasswordResetService;
 import com.project.Ums.utils.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,6 +41,8 @@ public class AuthController {
     private UserRepository userRepository;
     @Autowired
     private AdminService adminService;
+    @Autowired
+    private PasswordResetService passwordResetService;
 
     @Operation(summary = "User login", description = "Authenticates user credentials and returns JWT token")
     @ApiResponses(value = {
@@ -50,7 +57,7 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody LoginDto dto){
         try{
             User user = userRepository.findByUserName(dto.getUserName())
-                        .orElseThrow(() -> new RuntimeException("User not found"));
+                        .orElseThrow(() -> new UserNotFoundException("User not found"));
 
             if(!"ACTIVE".equals(user.getStatus())){
                 throw new RuntimeException("User is not verified");
@@ -63,7 +70,7 @@ public class AuthController {
             return ResponseEntity.ok(new LoginResponse(token, UserMapper.toProfile(user)));
         }catch (Exception e){
             log.error("Exception occurred while createAuthenticationToken ", e);
-            throw new RuntimeException("Incorrect username or password", e);
+            throw e; // Let global exception handler handle it
         }
     }
 
@@ -103,6 +110,43 @@ public class AuthController {
             otpService.sendOtpOnRequest(id, email);
             return ResponseEntity.ok("OTP sent to your email. Valid for 5 minutes.");
         } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Forgot password", description = "Sends password reset link to user's email")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset link sent successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid email address"),
+            @ApiResponse(responseCode = "404", description = "User not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @LogActivity(action="FORGOT_PASSWORD", description="User requested password reset")
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordDto dto) {
+        try {
+            String response = passwordResetService.forgotPassword(dto);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Exception occurred during forgot password request", e);
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Reset password", description = "Resets user password using valid token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid or expired token"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @LogActivity(action="RESET_PASSWORD", description="User reset password")
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordDto dto) {
+        try {
+            String response = passwordResetService.resetPassword(dto);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("Exception occurred during password reset", e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
