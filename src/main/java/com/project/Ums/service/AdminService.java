@@ -3,6 +3,7 @@ package com.project.Ums.service;
 import com.project.Ums.dto.UserRequestDto;
 import com.project.Ums.dto.UserResponseDto;
 import com.project.Ums.entity.User;
+import com.project.Ums.exception.UserNotFoundException;
 import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +85,7 @@ public class AdminService {
 
     public void deleteUserById(String id){
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with ID:" + id));
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID:" + id));
         userRepository.delete(user);
     }
 }
