@@ -1,5 +1,6 @@
 package com.project.Ums.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
@@ -12,6 +13,18 @@ import java.util.List;
 
 @Configuration
 public class SwaggerConfig {
+
+    @Value("${SWAGGER_DEV_URL:http://localhost:8080}")
+    private String devUrl;
+
+    @Value("${SWAGGER_PROD_URL:https://ums-production.com}")
+    private String prodUrl;
+
+    @Value("${SWAGGER_CONTACT_EMAIL:saransdhiman.try@gmail.com}")
+    private String contactEmail;
+
+    @Value("${SWAGGER_CONTACT_URL:https://github.com/Saransh-27/User-Management-System}")
+    private String contactUrl;
 
     @Bean
     public OpenAPI customOpenAPI() {
@@ -32,8 +45,8 @@ public class SwaggerConfig {
                                 """)
                         .contact(new io.swagger.v3.oas.models.info.Contact()
                                 .name("Development Team")
-                                .email("support@ums.com")
-                                .url("https://github.com/Saransh-27/User-Management-System"))
+                                .email(contactEmail)
+                                .url(contactUrl))
                         .license(new io.swagger.v3.oas.models.info.License()
                                 .name("MIT License")
                                 .url("https://opensource.org/licenses/MIT"))
@@ -42,10 +55,10 @@ public class SwaggerConfig {
                 // 🌍 Server configuration
                 .servers(List.of(
                         new Server()
-                                .url("http://localhost:8081")
+                                .url(devUrl)
                                 .description("Local Development Server"),
                         new Server()
-                                .url("https://ums-production.com")
+                                .url(prodUrl)
                                 .description("Production Server")
                 ))
 
