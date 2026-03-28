@@ -20,6 +20,7 @@ public class CorsConfig {
         
         // Allow specific origins
         config.addAllowedOrigin(frontendUrl);
+        config.addAllowedOrigin("https://user-mng-system.netlify.app");
         
         // Allow credentials
         config.setAllowCredentials(true);
