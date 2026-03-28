@@ -51,9 +51,12 @@ public class VerificationService {
         
         // Send verification email
         String verificationLink = verificationUrl + "/verify-email?token=" + token;
-        emailService.sendVerificationEmail(user, verificationLink);
-        
-        log.info("Verification token created and email sent for user: {}", user.getEmail());
+        try {
+            emailService.sendVerificationEmail(user, verificationLink);
+            log.info("Verification token created and email sent for user: {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Verification token created but FAILED to send email to {}: {}", user.getEmail(), e.getMessage(), e);
+        }
         return token;
     }
 
@@ -88,7 +91,11 @@ public class VerificationService {
         
         // Send welcome email with the original password
         String rawPassword = verificationToken.getRawPassword();
-        emailService.sendWelcomeEmail(user, rawPassword);
+        try {
+            emailService.sendWelcomeEmail(user, rawPassword);
+        } catch (Exception e) {
+            log.error("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+        }
         
         // Clear the raw password from the token after sending the email (security)
         verificationToken.setRawPassword(null);

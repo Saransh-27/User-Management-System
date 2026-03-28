@@ -4,6 +4,7 @@ import com.project.Ums.entity.User;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -22,8 +23,11 @@ public class EmailService {
     @Value("${EMAIL_TEAM_NAME:User Management System Team}")
     private String teamName;
 
-    public void sendEmail(String to, String subject, String body){
-        try{
+    @Value("${app.verification.url:http://localhost:5173}")
+    private String frontendBaseUrl;
+
+    public void sendEmail(String to, String subject, String body) {
+        try {
             SimpleMailMessage mail = new SimpleMailMessage();
             mail.setFrom(emailFrom);
             mail.setTo(to);
@@ -31,16 +35,21 @@ public class EmailService {
             mail.setText(body);
             javaMailSender.send(mail);
             log.info("Email sent successfully to: {}", to);
-        } catch (Exception e) {
-            log.error("Exception while sending email to {}: ", to, e);
+        } catch (MailException e) {
+            log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send email to " + to, e);
         }
     }
 
     public void sendUserCreationEmail(User user) {
-        String subject = "Account Created - Verification Required";
-        String body = createUserCreationMessage(user);
-        sendEmail(user.getEmail(), subject, body);
-        log.info("User creation email sent to: {}", user.getEmail());
+        try {
+            String subject = "Account Created - Verification Required";
+            String body = createUserCreationMessage(user);
+            sendEmail(user.getEmail(), subject, body);
+            log.info("User creation email sent to: {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send user creation email to {}: {}", user.getEmail(), e.getMessage());
+        }
     }
 
     public void sendOTPEmail(User user, String otp) {
@@ -130,7 +139,7 @@ public class EmailService {
                 "We received a request to reset your password for your User Management System account.\n\n" +
                 "To reset your password, use the following token:\n\n" +
                 "Reset Token: " + resetToken + "\n\n" +
-                "You can also visit: http://localhost:5173/reset-password?token=" + resetToken + "\n\n" +
+                "You can also visit: " + frontendBaseUrl + "/reset-password?token=" + resetToken + "\n\n" +
                 "This token will expire in 1 hour for security reasons.\n\n" +
                 "If you didn't request a password reset, please ignore this email or contact support immediately.\n\n" +
                 "For security, please:\n" +

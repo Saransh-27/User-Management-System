@@ -10,7 +10,7 @@ import org.springframework.web.filter.CorsFilter;
 @Configuration
 public class CorsConfig {
 
-    @Value("${FRONTEND_URL:http://localhost:5173}")
+    @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
     @Bean
@@ -19,7 +19,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
         
         // Allow specific origins
-        config.addAllowedOrigin(frontendUrl);
+        config.addAllowedOrigin("http://localhost:5173");
         config.addAllowedOrigin("https://user-mng-system.netlify.app");
         
         // Allow credentials
