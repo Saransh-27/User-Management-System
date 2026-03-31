@@ -7,25 +7,25 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-
 
 @Service
 @Slf4j
 public class EmailService {
     @Autowired
     private JavaMailSender javaMailSender;
-    
+
     @Value("${EMAIL_FROM:noreply@ums.com}")
     private String emailFrom;
-    
+
     @Value("${EMAIL_TEAM_NAME:User Management System Team}")
     private String teamName;
 
     @Value("${app.verification.url:http://localhost:5173}")
     private String frontendBaseUrl;
 
+    @Async
     public void sendEmail(String to, String subject, String body) {
         try {
             SimpleMailMessage mail = new SimpleMailMessage();
@@ -41,6 +41,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void sendUserCreationEmail(User user) {
         try {
             String subject = "Account Created - Verification Required";
@@ -52,6 +53,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void sendOTPEmail(User user, String otp) {
         String subject = "OTP Verification - User Management System";
         String body = createOTPMessage(user, otp);
@@ -59,6 +61,7 @@ public class EmailService {
         log.info("OTP email sent to: {}", user.getEmail());
     }
 
+    @Async
     public void sendVerificationEmail(User user, String verificationLink) {
         String subject = "Verify Your Email Address";
         String body = createVerificationMessage(user, verificationLink);
@@ -66,6 +69,7 @@ public class EmailService {
         log.info("Verification email sent to: {}", user.getEmail());
     }
 
+    @Async
     public void sendWelcomeEmail(User user, String rawPassword) {
         String subject = "Welcome to User Management System!";
         String body = createWelcomeMessage(user, rawPassword);
@@ -73,6 +77,7 @@ public class EmailService {
         log.info("Welcome email sent to: {}", user.getEmail());
     }
 
+    @Async
     public void sendPasswordResetEmail(String email, String resetToken) {
         String subject = "Password Reset Request - User Management System";
         String body = createPasswordResetMessage(resetToken);
@@ -119,14 +124,16 @@ public class EmailService {
         String passwordDisplay = (rawPassword != null && !rawPassword.isBlank())
                 ? rawPassword
                 : "(Set during registration)";
-        
+
         return "Dear " + user.getUserName() + ",\n\n" +
                 "Welcome to the User Management System!\n\n" +
-                "Your account has been successfully verified and activated. You can now login with the following credentials:\n\n" +
+                "Your account has been successfully verified and activated. You can now login with the following credentials:\n\n"
+                +
                 "Username: " + user.getUserName() + "\n" +
                 "Password: " + passwordDisplay + "\n" +
                 "User ID: " + user.getId() + "\n\n" +
-                "IMPORTANT: For security reasons, we strongly recommend changing your password after your first login.\n\n" +
+                "IMPORTANT: For security reasons, we strongly recommend changing your password after your first login.\n\n"
+                +
                 "Please keep your credentials safe and do not share them with anyone.\n\n" +
                 "You can now log in to your account and start using our services.\n\n" +
                 "If you have any questions or need assistance, please don't hesitate to contact us.\n\n" +
