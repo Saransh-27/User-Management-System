@@ -32,6 +32,6 @@ public class User {
     @Indexed
     private String otp;
     private LocalDateTime otpExpiry;
-    private String profilePhoto;
+    private String profilePhoto; // Base64 encoded image data
     private LocalDateTime createdAt;
 }
