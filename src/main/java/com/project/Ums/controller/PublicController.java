@@ -30,6 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.project.Ums.utils.JwtUtil;
+import java.util.Base64;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -56,8 +57,7 @@ public class PublicController {
     @Autowired
     private JwtUtil jwtUtil;
     
-    private static final String UPLOAD_DIR = "uploads/profile-photos/";
-
+    
     @Operation(summary = "View user profile", description = "Retrieves the current authenticated user's profile information")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Profile retrieved successfully"),
@@ -200,28 +200,17 @@ public class PublicController {
                 throw new FileUploadException("File size should be less than 5MB");
             }
 
-            // Create upload directory if it doesn't exist
-            Path uploadPath = Paths.get(UPLOAD_DIR);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            // Generate unique filename
-            String originalFilename = file.getOriginalFilename();
-            String fileExtension = originalFilename != null && originalFilename.contains(".") 
-                ? originalFilename.substring(originalFilename.lastIndexOf(".")) 
-                : "";
-            String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+            // Convert file to Base64 and store in database
+            byte[] fileContent = file.getBytes();
+            String base64Image = Base64.getEncoder().encodeToString(fileContent);
+            String mimeType = file.getContentType();
+            String dataUrl = "data:" + mimeType + ";base64," + base64Image;
             
-            // Save file
-            Path filePath = uploadPath.resolve(uniqueFilename);
-            Files.copy(file.getInputStream(), filePath);
-
-            // Update user profile with photo path
-            String photoUrl = "/public/profile-photos/" + uniqueFilename;
-            user.setProfilePhoto(photoUrl);
+            // Update user profile with Base64 image data
+            user.setProfilePhoto(dataUrl);
             userRepository.save(user);
 
+            log.info("Profile photo uploaded and stored in database for user: {}", userName);
             return ResponseEntity.ok(UserMapper.toProfile(user));
         } catch (IOException e) {
             log.error("Error uploading profile photo", e);
@@ -229,27 +218,7 @@ public class PublicController {
         }
     }
 
-    @Operation(summary = "Get profile photo", description = "Serves profile photo by filename")
-    @GetMapping("/profile-photos/{filename}")
-    public ResponseEntity<byte[]> getProfilePhoto(@PathVariable String filename) {
-        try {
-            Path filePath = Paths.get(UPLOAD_DIR).resolve(filename);
-            if (!Files.exists(filePath)) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            byte[] fileContent = Files.readAllBytes(filePath);
-            String contentType = Files.probeContentType(filePath);
-            
-            return ResponseEntity.ok()
-                    .header("Content-Type", contentType != null ? contentType : "image/jpeg")
-                    .body(fileContent);
-        } catch (IOException e) {
-            log.error("Error serving profile photo", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
+    
     @Operation(summary = "Delete user account", description = "Permanently deletes the current authenticated user's account")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Account deleted successfully"),
