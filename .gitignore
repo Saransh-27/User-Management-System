@@ -31,6 +31,9 @@ target/
 #Logs
 *.log
 
+# Uploads folder (profile photos now stored in database)
+uploads/
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
