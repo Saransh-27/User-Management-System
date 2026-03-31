@@ -16,16 +16,17 @@ public class EmailService {
     @Autowired
     private JavaMailSender javaMailSender;
 
-    @Value("${EMAIL_FROM:noreply@ums.com}")
+    @Value("${spring.mail.username}")
     private String emailFrom;
 
-    @Value("${EMAIL_TEAM_NAME:User Management System Team}")
+    @Value("${EMAIL_TEAM_NAME}")
     private String teamName;
 
-    @Value("${app.verification.url:http://localhost:5173}")
+    @Value("${app.verification.url}")
     private String frontendBaseUrl;
 
-    @Async
+    // NOTE: NOT @Async — this is an internal helper called by async methods above.
+    // Spring's proxy cannot intercept self-calls so @Async here would have no effect.
     public void sendEmail(String to, String subject, String body) {
         try {
             SimpleMailMessage mail = new SimpleMailMessage();

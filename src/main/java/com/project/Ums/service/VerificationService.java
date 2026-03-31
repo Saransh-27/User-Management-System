@@ -26,7 +26,7 @@ public class VerificationService {
     @Autowired
     private EmailService emailService;
     
-    @Value("${app.verification.url:http://localhost:5173}")
+    @Value("${app.verification.url}")
     private String verificationUrl;
     
     private final SecureRandom random = new SecureRandom();
