@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -25,6 +26,9 @@ public class VerificationService {
     
     @Autowired
     private EmailService emailService;
+    
+    @Value("${app.environment}")
+    private String environment;
     
     @Value("${app.verification.url}")
     private String verificationUrl;
@@ -49,15 +53,27 @@ public class VerificationService {
         
         verificationTokenRepository.save(verificationToken);
         
-        // Send verification email
+        // Send verification email asynchronously
         String verificationLink = verificationUrl + "/verify-email?token=" + token;
         try {
-            emailService.sendVerificationEmail(user, verificationLink);
-            log.info("Verification token created and email sent for user: {}", user.getEmail());
+            CompletableFuture<String> future = emailService.sendVerificationEmail(user, verificationLink);
+            
+            // For production, we want the link immediately
+            if ("production".equalsIgnoreCase(environment)) {
+                String returnedLink = future.get(); // This will be fast in production as it returns immediately
+                if (returnedLink != null) {
+                    log.info("Verification link generated for production: {}", returnedLink);
+                    return returnedLink;
+                }
+            }
+            
+            // For local development, email is sent asynchronously
+            log.info("Verification email initiated for user: {}", user.getEmail());
         } catch (Exception e) {
-            log.error("Verification token created but FAILED to send email to {}: {}", user.getEmail(), e.getMessage(), e);
+            log.error("Verification token created but FAILED to initiate email to {}: {}", user.getEmail(), e.getMessage(), e);
         }
-        return token;
+        
+        return null; // For local development or if failed
     }
 
     public String verifyToken(String token) {

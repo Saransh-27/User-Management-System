@@ -1,6 +1,7 @@
 package com.project.Ums.controller;
 
 import com.project.Ums.dto.VerificationResponse;
+import com.project.Ums.entity.User;
 import com.project.Ums.service.VerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -8,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,37 @@ public class VerificationController {
 
     @Autowired
     private VerificationService verificationService;
+
+    @Value("${app.environment}")
+    private String environment;
+
+    @Operation(summary = "Get verification link (production only)", description = "Returns verification link instead of sending email in production environment")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Verification link returned"),
+            @ApiResponse(responseCode = "400", description = "Not in production environment"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @PostMapping("/verification-link")
+    public ResponseEntity<?> getVerificationLink(@RequestBody User user) {
+        try {
+            if (!"production".equalsIgnoreCase(environment)) {
+                return ResponseEntity.badRequest().body("This endpoint is only available in production environment");
+            }
+            
+            // Create verification token and get link
+            String verificationLink = verificationService.createVerificationToken(user, null);
+            
+            if (verificationLink != null) {
+                return ResponseEntity.ok(new VerificationResponse(true, verificationLink, null));
+            } else {
+                return ResponseEntity.badRequest().body(new VerificationResponse(false, null, "Failed to generate verification link"));
+            }
+        } catch (Exception e) {
+            log.error("Failed to generate verification link: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new VerificationResponse(false, null, "Failed to generate verification link"));
+        }
+    }
 
     @Operation(summary = "Verify user email", description = "Verifies user email using token sent to their email address")
     @ApiResponses(value = {

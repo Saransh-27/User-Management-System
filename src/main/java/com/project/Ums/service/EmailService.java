@@ -10,6 +10,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.CompletableFuture;
+
 @Service
 @Slf4j
 public class EmailService {
@@ -24,6 +26,12 @@ public class EmailService {
 
     @Value("${app.verification.url}")
     private String frontendBaseUrl;
+
+    @Value("${app.environment}")
+    private String environment;
+
+    @Value("${app.email.enabled}")
+    private boolean emailEnabled;
 
     // NOTE: NOT @Async — this is an internal helper called by async methods above.
     // Spring's proxy cannot intercept self-calls so @Async here would have no effect.
@@ -63,11 +71,26 @@ public class EmailService {
     }
 
     @Async
-    public void sendVerificationEmail(User user, String verificationLink) {
-        String subject = "Verify Your Email Address";
-        String body = createVerificationMessage(user, verificationLink);
-        sendEmail(user.getEmail(), subject, body);
-        log.info("Verification email sent to: {}", user.getEmail());
+    public CompletableFuture<String> sendVerificationEmail(User user, String verificationLink) {
+        // In production or when email is disabled, return the link immediately
+        if ("production".equalsIgnoreCase(environment) || !emailEnabled) {
+            log.info("Production environment or email disabled - verification link for user {}: {}", user.getEmail(), verificationLink);
+            return CompletableFuture.completedFuture(verificationLink);
+        }
+        
+        // Normal flow for local development - send email asynchronously
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String subject = "Verify Your Email Address";
+                String body = createVerificationMessage(user, verificationLink);
+                sendEmail(user.getEmail(), subject, body);
+                log.info("Verification email sent to: {}", user.getEmail());
+                return null; // Return null for local development (email sent)
+            } catch (Exception e) {
+                log.error("Failed to send verification email to {}: {}", user.getEmail(), e.getMessage());
+                throw new RuntimeException("Failed to send verification email", e);
+            }
+        });
     }
 
     @Async

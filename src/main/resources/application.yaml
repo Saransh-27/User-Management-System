@@ -57,3 +57,10 @@ server:
 jwt:
   secret: ${JWT_SECRET}
 
+app:
+  environment: ${APP_ENV:local}  # Default to local if not set
+  verification:
+    url: ${APP_VERIFICATION_URL:http://localhost:3000}  # Default to localhost for local development
+  email:
+    enabled: ${EMAIL_ENABLED:true}  # Can be disabled in production
+
