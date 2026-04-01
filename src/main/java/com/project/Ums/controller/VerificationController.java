@@ -26,6 +26,9 @@ public class VerificationController {
     @Value("${app.environment}")
     private String environment;
 
+    @Value("${app.email.enabled}")
+    private boolean emailEnabled;
+
     @Operation(summary = "Get verification link (production only)", description = "Returns verification link instead of sending email in production environment")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Verification link returned"),
@@ -35,8 +38,9 @@ public class VerificationController {
     @PostMapping("/verification-link")
     public ResponseEntity<?> getVerificationLink(@RequestBody User user) {
         try {
-            if (!"production".equalsIgnoreCase(environment)) {
-                return ResponseEntity.badRequest().body("This endpoint is only available in production environment");
+            // Allow endpoint in both production and when email is disabled
+            if (!"production".equalsIgnoreCase(environment) && emailEnabled) {
+                return ResponseEntity.badRequest().body("This endpoint is only available in production environment or when email is disabled");
             }
             
             // Create verification token and get link
@@ -50,7 +54,7 @@ public class VerificationController {
         } catch (Exception e) {
             log.error("Failed to generate verification link: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new VerificationResponse(false, null, "Failed to generate verification link"));
+                    .body(new VerificationResponse(false, null, "Failed to generate verification link: " + e.getMessage()));
         }
     }
 
