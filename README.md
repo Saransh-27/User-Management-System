@@ -128,7 +128,7 @@ src/main/java/com/project/Ums/
     └── JwtUtil.java                # JWT token generation and validation utilities
 
 src/main/resources/
-├── application.yaml                # Application configuration (gitignored)
+├── .env                            # Environment variables configuration
 ├── static/                         # Static resources
 └── templates/                      # Template files
 
@@ -142,70 +142,46 @@ src/test/java/com/project/Ums/
 ## ⚙️ Configuration
 
 ### Application Configuration
-The application uses `application.yaml` for configuration (gitignored for security):
+The application uses `.env` file for environment variables configuration:
 
 #### Database Configuration
-```yaml
-spring:
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017/ums_db
-      # Or MongoDB Atlas connection string
-      # uri: mongodb+srv://username:password@cluster.mongodb.net/ums_db
+```env
+MONGODB_URI=mongodb://localhost:27017/ums_db
+# Or MongoDB Atlas connection string
+# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/ums_db
 ```
 
 #### Email Configuration
-```yaml
-spring:
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: your-email@gmail.com
-    password: your-app-password
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+```env
+SPRING_MAIL_HOST=smtp.gmail.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=your-email@gmail.com
+SPRING_MAIL_PASSWORD=your-app-password
 ```
 
 #### Security Configuration
-```yaml
-jwt:
-  secret: your-secret-key-here
-  expiration: 3600000  # 1 hour in milliseconds
+```env
+JWT_SECRET=your-secret-key-here
+JWT_EXPIRATION=3600000
 ```
 
 #### Server Configuration
-```yaml
-server:
-  port: 8081
-  servlet:
-    context-path: /
+```env
+SERVER_PORT=8081
 ```
 
 #### Logging Configuration
-```yaml
-logging:
-  level:
-    com.project.Ums: INFO
-    org.springframework.security: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/ums.log
+```env
+LOGGING_LEVEL_COM_PROJECT_UMS=INFO
+LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=DEBUG
+LOG_FILE_NAME=logs/ums.log
 ```
 
 #### Activity Log Configuration
-```yaml
-activity-log:
-  retention:
-    days: 90
-  cleanup:
-    batch-size: 1000
-    enabled: true
+```env
+ACTIVITY_LOG_RETENTION_DAYS=90
+ACTIVITY_LOG_CLEANUP_BATCH_SIZE=1000
+ACTIVITY_LOG_CLEANUP_ENABLED=true
 ```
 
 ### Security Configuration
@@ -241,10 +217,10 @@ activity-log:
 2. **Configure MongoDB**
    - Install and start MongoDB
    - Create database `ums_db`
-   - Update `application.yaml` with your MongoDB connection string
+   - Update `.env` file with your MongoDB connection string
 
 3. **Configure Email Settings**
-   - Update `application.yaml` with your SMTP settings
+   - Update `.env` file with your SMTP settings
    - Configure email host, port, username, and password
 
 4. **Build and Run**
@@ -259,10 +235,20 @@ activity-log:
    ```
 
 5. **Access the Application**
-   - Application runs on `http://localhost:8081`
-   - API Documentation: `http://localhost:8081/swagger-ui.html`
-   - Default admin user needs to be created via database
-   - New users require OTP verification for activation
+   - **Local Development**: Application runs on `http://localhost:8081`
+   - **Live Backend**: `https://ums-deployment-latest.onrender.com`
+   - **Live Frontend**: `https://user-mng-system.netlify.app/`
+   - **API Documentation**: `http://localhost:8081/swagger-ui.html` (local) or `https://ums-deployment-latest.onrender.com/swagger-ui.html` (live)
+
+6. **Default Admin Credentials**
+   - **Username**: `Admin`
+   - **Password**: `Admin@123`
+   - These credentials provide full administrative access to the system
+
+**Important Notes**:
+- New user accounts must be created by the administrator
+- For new user access requests, please contact the system administrator
+- Email functionality is limited in the live deployment due to SMTP restrictions on Render's free tier. See the [Known Issues](#-known-issues) section for details.
 
 ---
 
@@ -932,20 +918,12 @@ activity-log:
 - Uses JavaMailSender with SMTP configuration
 
 ### Email Configuration
-Configure in `application.yaml`:
-```yaml
-spring:
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: your-email@gmail.com
-    password: your-app-password
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+Configure in `.env` file:
+```env
+SPRING_MAIL_HOST=smtp.gmail.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=your-email@gmail.com
+SPRING_MAIL_PASSWORD=your-app-password
 ```
 
 ---
@@ -1039,6 +1017,40 @@ Project uses Lombok annotations:
 
 ---
 
+## ⚠️ Known Issues
+
+### EmailService SMTP Configuration on Render
+
+**Issue**: The EmailService functionality works perfectly in local development environments but encounters SMTP connectivity issues when deployed on Render cloud platform.
+
+**Root Cause**: 
+- Render's free tier and certain network configurations block outbound SMTP traffic on standard ports (587, 465, 25)
+- This is a common limitation among cloud providers to prevent spam and abuse
+- Local development environments typically don't have these restrictions
+
+**Affected Features**:
+- User registration emails with OTP verification
+- Welcome emails after account activation
+- Password reset emails
+- Account verification notifications
+
+**Current Status**:
+- ✅ **Local Development**: All email features work perfectly with configured SMTP
+- ❌ **Render Deployment**: SMTP connections are blocked, causing email failures
+
+**Recommended Solutions**:
+
+1. **Use Render's Paid Tier**: Upgrade to a paid plan that allows outbound SMTP traffic
+2. **Alternative Email Services**: Consider using cloud email APIs that work within Render's restrictions:
+   - SendGrid (HTTP API-based)
+   - Mailgun (HTTP API-based) 
+   - AWS SES (with proper configuration)
+3. **Environment-Specific Configuration**: Implement conditional email service activation based on deployment environment
+
+**Technical Note**: The EmailService code is implemented correctly and follows best practices. The issue is purely infrastructure-related to Render's network policies, not a code problem.
+
+---
+
 ## 🚀 Deployment
 
 ### Docker Deployment
@@ -1056,8 +1068,14 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
 - `SPRING_MAIL_USERNAME` - SMTP username
 - `SPRING_MAIL_PASSWORD` - SMTP password
 - `JWT_SECRET` - JWT signing secret
-- `LOGGING_RETENTION_DAYS` - Log retention period (default: 90)
-- `LOGGING_CLEANUP_BATCH_SIZE` - Log cleanup batch size (default: 1000)
+- `JWT_EXPIRATION` - JWT token expiration time in milliseconds
+- `SERVER_PORT` - Application server port
+- `LOGGING_LEVEL_COM_PROJECT_UMS` - Logging level for application
+- `LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY` - Logging level for security
+- `LOG_FILE_NAME` - Log file path
+- `ACTIVITY_LOG_RETENTION_DAYS` - Log retention period (default: 90)
+- `ACTIVITY_LOG_CLEANUP_BATCH_SIZE` - Log cleanup batch size (default: 1000)
+- `ACTIVITY_LOG_CLEANUP_ENABLED` - Enable/disable log cleanup (default: true)
 
 ---
 
@@ -1170,25 +1188,26 @@ For support and queries:
 - [x] **User activity self-service logs**
 - [x] **Secure file upload with validation**
 - [x] **Complete password reset functionality with token-based email verification**
+- [x] **Account email verification improvements**
+- [x] **Advanced user search with filters and pagination**
+- [x] **User activity dashboard**
+- [x] **Real-time notifications system**
+- [x] **Data export in multiple formats (JSON, XML, PDF)**
+- [x] **CI/CD pipeline setup**
+- [x] **Docker image deployment**
 
 ### Upcoming Features
-- [ ] Account email verification improvements
 - [ ] **Enhanced profile management (bio, social links, etc.)**
 - [ ] Rate limiting for API endpoints
 - [ ] Multi-factor authentication (MFA)
 - [ ] OAuth2 integration (Google, GitHub)
-- [ ] **Advanced user search with filters and pagination**
 - [ ] Bulk user operations
-- [ ] User activity dashboard with charts
 - [ ] GraphQL API support
 - [ ] Redis caching for improved performance
 - [ ] Microservices architecture migration
-- [ ] **Real-time notifications system**
-- [ ] **Data export in multiple formats (JSON, XML, PDF)**
 
 ### Technical Improvements
 - [ ] Comprehensive unit and integration tests
-- [ ] CI/CD pipeline setup
 - [ ] Container orchestration with Kubernetes
 - [ ] Monitoring and logging with ELK stack
 - [ ] Performance optimization and load testing
