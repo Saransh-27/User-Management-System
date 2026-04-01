@@ -58,13 +58,11 @@ public class VerificationService {
         try {
             CompletableFuture<String> future = emailService.sendVerificationEmail(user, verificationLink);
             
-            // For production, we want the link immediately
+            // For production, we want the link immediately (but don't block with .get())
             if ("production".equalsIgnoreCase(environment)) {
-                String returnedLink = future.get(); // This will be fast in production as it returns immediately
-                if (returnedLink != null) {
-                    log.info("Verification link generated for production: {}", returnedLink);
-                    return returnedLink;
-                }
+                // In production, the EmailService returns completed future immediately
+                // We can handle this synchronously since it's instant
+                return verificationLink; // Return the link directly for production
             }
             
             // For local development, email is sent asynchronously

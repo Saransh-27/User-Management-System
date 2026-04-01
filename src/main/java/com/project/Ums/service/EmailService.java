@@ -78,19 +78,17 @@ public class EmailService {
             return CompletableFuture.completedFuture(verificationLink);
         }
         
-        // Normal flow for local development - send email asynchronously
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                String subject = "Verify Your Email Address";
-                String body = createVerificationMessage(user, verificationLink);
-                sendEmail(user.getEmail(), subject, body);
-                log.info("Verification email sent to: {}", user.getEmail());
-                return null; // Return null for local development (email sent)
-            } catch (Exception e) {
-                log.error("Failed to send verification email to {}: {}", user.getEmail(), e.getMessage());
-                throw new RuntimeException("Failed to send verification email", e);
-            }
-        });
+        // Normal flow for local development - send email synchronously within async method
+        try {
+            String subject = "Verify Your Email Address";
+            String body = createVerificationMessage(user, verificationLink);
+            sendEmail(user.getEmail(), subject, body);
+            log.info("Verification email sent to: {}", user.getEmail());
+            return CompletableFuture.completedFuture(null); // Return null for local development (email sent)
+        } catch (Exception e) {
+            log.error("Failed to send verification email to {}: {}", user.getEmail(), e.getMessage());
+            return CompletableFuture.failedFuture(new RuntimeException("Failed to send verification email", e));
+        }
     }
 
     @Async
