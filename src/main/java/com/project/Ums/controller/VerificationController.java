@@ -29,6 +29,9 @@ public class VerificationController {
     @Value("${app.email.enabled}")
     private boolean emailEnabled;
 
+    @Value("${app.verification.url}")
+    private String verificationUrl;
+
     @Operation(summary = "Get verification link (production only)", description = "Returns verification link instead of sending email in production environment")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Verification link returned"),
@@ -162,7 +165,7 @@ public class VerificationController {
                 "        <h1>Email Verified Successfully!</h1>\n" +
                 "        <p>" + message + "</p>\n" +
                 "        <p>Your account has been successfully verified and activated. You can now log in to your account.</p>\n" +
-                "        <a href=\"http://localhost:3000/login\" class=\"btn\">Go to Login</a>\n" +
+                "        <a href=\"" + verificationUrl + "/login\" class=\"btn\">Go to Login</a>\n" +
                 "    </div>\n" +
                 "</body>\n" +
                 "</html>";
@@ -231,7 +234,7 @@ public class VerificationController {
                 "        <p>We couldn't verify your email address.</p>\n" +
                 "        <p><strong>Error:</strong> " + errorMessage + "</p>\n" +
                 "        <p>Please contact support or try requesting a new verification email.</p>\n" +
-                "        <a href=\"http://localhost:3000/login\" class=\"btn\">Go to Login</a>\n" +
+                "        <a href=\"" + verificationUrl + "/login\" class=\"btn\">Go to Login</a>\n" +
                 "    </div>\n" +
                 "</body>\n" +
                 "</html>";
