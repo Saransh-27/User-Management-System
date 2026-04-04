@@ -1,5 +1,19 @@
 # User Management System (UMS)
 
+## 📌 Project Overview
+This is a full-stack User Management System:
+🔧 **Backend**: Spring Boot (REST APIs)  
+🎨 **Frontend**: React.js  
+🔐 **Authentication**: JWT + Email Verification  
+☁️ **Deployment**:  
+- Backend → Render  
+- Frontend → Netlify
+
+## 🌐 Frontend
+**Live**: https://user-mng-system.netlify.app
+
+**Code**: https://github.com/Saransh-27/User-Management-System-frontend
+
 A comprehensive backend User Management System built with Spring Boot 3.5.10 and MongoDB, featuring JWT-based authentication, role-based authorization, email notifications with OTP verification, comprehensive activity logging, and RESTful APIs for complete user lifecycle management.
 
 ---
