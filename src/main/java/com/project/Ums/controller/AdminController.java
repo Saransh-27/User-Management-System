@@ -39,8 +39,15 @@ public class AdminController {
     public ResponseEntity<?> addUser(
             @Parameter(description = "User details for creating new account", required = true)
             @Valid @RequestBody UserRequestDto dto) {
-        adminService.addUser(dto);
-        return ResponseEntity.ok("User added successfully. Account creation info sent to user's email for verification.");
+        String verificationLink = adminService.addUser(dto);
+        
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("message", "User created successfully");
+        response.put("userName", dto.getUserName());
+        response.put("email", dto.getEmail());
+        response.put("verificationLink", verificationLink);
+        
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Get all users", description = "Retrieves a list of all registered users with essential information")

@@ -27,7 +27,7 @@ public class AdminService {
     private final PasswordEncoder passwordEncoder;
     private final VerificationService verificationService;
 
-    public void addUser(UserRequestDto dto) {
+    public String addUser(UserRequestDto dto) {
         User user = UserMapper.toEntity(dto);
         String rawPassword = dto.getPassword(); // Keep original before hashing
         user.setPassword(passwordEncoder.encode(rawPassword));
@@ -40,9 +40,11 @@ public class AdminService {
         
         // Create verification token and send verification email
         // Pass raw password so it can be included in welcome email after verification
-        verificationService.createVerificationToken(user, rawPassword);
+        // Returns the verification link for display in the API response
+        String verificationLink = verificationService.createVerificationToken(user, rawPassword);
         
         log.info("User created: {} with roles: {}", user.getUserName(), user.getRoles());
+        return verificationLink;
     }
 
     public List<UserResponseDto> getAllUsers() {

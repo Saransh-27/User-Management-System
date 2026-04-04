@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -26,9 +25,6 @@ public class VerificationService {
     
     @Autowired
     private EmailService emailService;
-    
-    @Value("${app.environment}")
-    private String environment;
     
     @Value("${app.verification.url}")
     private String verificationUrl;
@@ -53,25 +49,19 @@ public class VerificationService {
         
         verificationTokenRepository.save(verificationToken);
         
-        // Send verification email asynchronously
+        // Build verification link
         String verificationLink = verificationUrl + "/verify-email?token=" + token;
+        
+        // Attempt to send verification email asynchronously (best-effort)
         try {
-            CompletableFuture<String> future = emailService.sendVerificationEmail(user, verificationLink);
-            
-            // For production, we want the link immediately (but don't block with .get())
-            if ("production".equalsIgnoreCase(environment)) {
-                // In production, the EmailService returns completed future immediately
-                // We can handle this synchronously since it's instant
-                return verificationLink; // Return the link directly for production
-            }
-            
-            // For local development, email is sent asynchronously
+            emailService.sendVerificationEmail(user, verificationLink);
             log.info("Verification email initiated for user: {}", user.getEmail());
         } catch (Exception e) {
             log.error("Verification token created but FAILED to initiate email to {}: {}", user.getEmail(), e.getMessage(), e);
         }
         
-        return null; // For local development or if failed
+        // Always return the verification link so it can be shown in the API response
+        return verificationLink;
     }
 
     public String verifyToken(String token) {
