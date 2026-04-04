@@ -24,52 +24,25 @@ A comprehensive backend User Management System built with Spring Boot 3.5.10 and
 - **Java 17** - Programming language
 - **Spring Boot 3.5.10** - Main application framework
 - **Maven** - Build and dependency management
-- **Spring AI 1.1.2** - AI integration capabilities (configured for future use)
 
-### Database & Persistence
-- **MongoDB** - NoSQL database for data storage
-- **Spring Data MongoDB** - MongoDB integration and repository support
-- **MongoDB Atlas Compatible** - Optimized for cloud deployment
-- **Indexed Fields**: userName, email, status, otp for optimized queries
-- **MongoDB Indexing** - Optimized indexes on userName, email, status, and otp fields
-
-### Security & Authentication
+### Database & Security
+- **MongoDB** - NoSQL database with optimized indexes
 - **Spring Security 6.x** - Security framework
 - **JWT (JSON Web Tokens)** - Stateless authentication
-- **JJWT 0.12.5** - JWT library (api, jackson, impl modules)
 - **BCrypt** - Password encryption
 - **Role-based Access Control** - ADMIN and USER roles
 - **OTP Verification** - 6-digit one-time password system
 
-### Web & API
+### Web & Communication
 - **Spring Boot Starter Web** - REST API development
-- **Spring Boot Starter Validation** - Input validation using Jakarta Bean Validation
-- **RESTful APIs** - Complete CRUD operations
-- **Swagger/OpenAPI 3.0** - Interactive API documentation
-
-### Email & Communication
+- **Spring Boot Starter Validation** - Input validation
 - **Spring Boot Starter Mail** - Email sending capabilities
-- **JavaMailSender** - Email service implementation
-- **SMTP Integration** - Gmail and other SMTP providers support
-- **Template-based Emails** - Structured email templates for user communications
-- **SMTP Integration** - Configurable email server support
+- **Swagger/OpenAPI 3.0** - Interactive API documentation
 
 ### Development Tools
 - **Spring Boot DevTools** - Hot reload and development utilities
 - **Lombok** - Code generation and boilerplate reduction
-- **Spring Boot Configuration Processor** - Configuration metadata generation
 - **Spring Boot Starter AOP** - Aspect-Oriented Programming for logging
-
-### API Documentation
-- **SpringDoc OpenAPI 3** - Interactive API documentation (version 2.8.15)
-- **Swagger UI** - API testing and exploration interface
-- **OpenAPI Specification** - Standard API documentation format
-- **Security Documentation** - JWT bearer authentication support
-
-### Testing
-- **Spring Boot Starter Test** - Testing framework with JUnit 5, Mockito, etc.
-- **JUnit Jupiter** - Modern testing framework
-- **Test Coverage** - Unit and integration testing support
 
 ---
 
