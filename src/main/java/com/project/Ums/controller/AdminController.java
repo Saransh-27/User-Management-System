@@ -1,5 +1,7 @@
 package com.project.Ums.controller;
 
+import com.project.Ums.dto.TaskCreateRequest;
+import com.project.Ums.dto.UpdateTaskStatusRequest;
 import com.project.Ums.dto.UserRequestDto;
 import com.project.Ums.logging.LogActivity;
 import com.project.Ums.service.AdminService;
@@ -90,7 +92,9 @@ public class AdminController {
     public ResponseEntity<?> getUserById(
             @Parameter(description = "Unique identifier of the user", required = true)
             @PathVariable String id){
-        return new ResponseEntity<>(adminService.getUserById(id), HttpStatus.OK);
+        return adminService.getUserById(id)
+                .map(user -> new ResponseEntity<>(user, HttpStatus.OK))
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     @Operation(summary = "Delete user", description = "Permanently removes a user account from the system")
@@ -109,4 +113,27 @@ public class AdminController {
         return ResponseEntity.ok("User deleted successfully");
     }
 
+    /**
+     * Task controllers
+     */
+    @PostMapping("/create-task")
+    public ResponseEntity<?> createTask(@Valid @RequestBody TaskCreateRequest Request) {
+        return new ResponseEntity<>(adminService.createTask(Request), HttpStatus.CREATED);
+    }
+
+    @GetMapping("/all-tasks")
+    public ResponseEntity<?> getAllTasks() {
+        return new ResponseEntity<>(adminService.getAllTasks(), HttpStatus.OK);
+    }
+
+    @PutMapping("/update/{taskId}/status")
+    public ResponseEntity<?> updateTaskStatus(@PathVariable String taskId, @RequestBody UpdateTaskStatusRequest request) {
+        return new ResponseEntity<>(adminService.updateTaskStatus(taskId, request), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/del-task/{taskId}")
+    public ResponseEntity<?> deleteTaskById(@PathVariable String taskId) {
+        adminService.deleteTaskById(taskId);
+        return ResponseEntity.ok("Task deleted successfully");
+    }
 }
