@@ -1,15 +1,14 @@
 package com.project.Ums.controller;
 
+import com.project.Ums.dto.UpdateTaskStatusRequest;
+import com.project.Ums.dto.UserProfileDto;
 import com.project.Ums.dto.UserUpdateDto;
 import com.project.Ums.entity.User;
-import com.project.Ums.exception.FileUploadException;
-import com.project.Ums.exception.InvalidPasswordException;
 import com.project.Ums.exception.UserNotFoundException;
 import com.project.Ums.logging.LogActivity;
-import com.project.Ums.logging.ActivityLog;
-import com.project.Ums.logging.ActivityLogRepository;
-import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.UserRepository;
+import com.project.Ums.service.AdminService;
+import com.project.Ums.service.PublicService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,27 +17,14 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import com.project.Ums.utils.JwtUtil;
-import java.util.Base64;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 
 @RestController
@@ -49,13 +35,11 @@ import java.util.UUID;
 public class PublicController {
 
     @Autowired
+    private PublicService publicService;
+    @Autowired
     private UserRepository userRepository;
     @Autowired
-    private PasswordEncoder passwordEncoder;
-    @Autowired
-    private ActivityLogRepository activityLogRepository;
-    @Autowired
-    private JwtUtil jwtUtil;
+    private AdminService adminService;
     
     
     @Operation(summary = "View user profile", description = "Retrieves the current authenticated user's profile information")
@@ -70,9 +54,8 @@ public class PublicController {
     public ResponseEntity<?> userByUsername(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        User user = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-        return new ResponseEntity<>(UserMapper.toProfile(user), HttpStatus.OK);
+        UserProfileDto profile = publicService.getUserProfile(userName);
+        return new ResponseEntity<>(profile, HttpStatus.OK);
     }
 
     @Operation(summary = "Update user profile", description = "Partially updates the current authenticated user's profile. Only non-null fields are updated.")
@@ -91,43 +74,7 @@ public class PublicController {
             @RequestBody UserUpdateDto dto){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        User userInDb = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-        // Partial update: only update fields that are provided (non-null and non-blank)
-        boolean usernameChanged = false;
-        if (dto.getUserName() != null && !dto.getUserName().isBlank()) {
-            if (!dto.getUserName().equals(userInDb.getUserName())) {
-                usernameChanged = true;
-            }
-            userInDb.setUserName(dto.getUserName());
-        }
-        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
-            userInDb.setEmail(dto.getEmail());
-        }
-        // Password update requires currentPassword verification
-        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
-            if (dto.getCurrentPassword() == null || dto.getCurrentPassword().isBlank()) {
-                throw new InvalidPasswordException("Current password is required to set a new password");
-            }
-            if (!passwordEncoder.matches(dto.getCurrentPassword(), userInDb.getPassword())) {
-                throw new InvalidPasswordException("Current password is incorrect");
-            }
-            userInDb.setPassword(passwordEncoder.encode(dto.getPassword()));
-        }
-
-        User updatedUser = userRepository.save(userInDb);
-
-        // Build response with profile data
-        Map<String, Object> response = new HashMap<>();
-        response.put("user", UserMapper.toProfile(updatedUser));
-
-        // If username changed, issue a new JWT token so the session doesn't break
-        if (usernameChanged) {
-            String newToken = jwtUtil.generateToken(updatedUser.getUserName());
-            response.put("token", newToken);
-        }
-
+        Map<String, Object> response = publicService.updateUser(userName, dto);
         return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
     }
 
@@ -143,30 +90,9 @@ public class PublicController {
     public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        User user = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
         String currentPassword = request.get("currentPassword");
         String newPassword = request.get("newPassword");
-
-        if (currentPassword == null || currentPassword.isBlank()) {
-            throw new IllegalArgumentException("Current password is required");
-        }
-        if (newPassword == null || newPassword.isBlank()) {
-            throw new IllegalArgumentException("New password is required");
-        }
-        if (newPassword.length() < 6) {
-            throw new InvalidPasswordException("New password must be at least 6 characters");
-        }
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new InvalidPasswordException("Current password is incorrect");
-        }
-
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Password changed successfully");
+        Map<String, String> response = publicService.changePassword(userName, currentPassword, newPassword);
         return ResponseEntity.ok(response);
     }
 
@@ -181,41 +107,10 @@ public class PublicController {
     @LogActivity(action="UPLOAD_PHOTO", description="Uploaded profile photo")
     @PostMapping("/upload-profile-photo")
     public ResponseEntity<?> uploadProfilePhoto(@RequestParam("file") MultipartFile file) {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String userName = authentication.getName();
-            
-            User user = userRepository.findByUserName(userName)
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-            if (file.isEmpty()) {
-                throw new FileUploadException("Please select a file to upload");
-            }
-
-            if (!file.getContentType().startsWith("image/")) {
-                throw new FileUploadException("Only image files are allowed");
-            }
-
-            if (file.getSize() > 5 * 1024 * 1024) { // 5MB limit
-                throw new FileUploadException("File size should be less than 5MB");
-            }
-
-            // Convert file to Base64 and store in database
-            byte[] fileContent = file.getBytes();
-            String base64Image = Base64.getEncoder().encodeToString(fileContent);
-            String mimeType = file.getContentType();
-            String dataUrl = "data:" + mimeType + ";base64," + base64Image;
-            
-            // Update user profile with Base64 image data
-            user.setProfilePhoto(dataUrl);
-            userRepository.save(user);
-
-            log.info("Profile photo uploaded and stored in database for user: {}", userName);
-            return ResponseEntity.ok(UserMapper.toProfile(user));
-        } catch (IOException e) {
-            log.error("Error uploading profile photo", e);
-            throw new FileUploadException("Failed to upload profile photo. Please try again.");
-        }
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userName = authentication.getName();
+        UserProfileDto response = publicService.uploadProfilePhoto(userName, file);
+        return ResponseEntity.ok(response);
     }
 
     
@@ -231,11 +126,7 @@ public class PublicController {
     public ResponseEntity<?> deleteUser(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        User user = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-        userRepository.delete(user);
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Account deleted successfully");
+        Map<String, String> response = publicService.deleteUser(userName);
         return ResponseEntity.ok(response);
     }
 
@@ -246,9 +137,23 @@ public class PublicController {
             @RequestParam(defaultValue = "20") int size) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
-        Pageable pageable = PageRequest.of(page, size, Sort.by("timestamp").descending());
-        Page<ActivityLog> logs = activityLogRepository.findByUsername(userName, pageable);
+        var logs = publicService.getMyLogs(userName, page, size);
         return ResponseEntity.ok(logs);
     }
 
+    @GetMapping("/view-task")
+    public ResponseEntity<?> viewTask() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userName = authentication.getName();
+        User user = userRepository.findByUserName(userName)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        var tasks = publicService.getMyTasks(user.getId());
+        return ResponseEntity.ok(tasks);
+    }
+
+    @PutMapping("/update-task/{taskId}/status")
+    public ResponseEntity<?> updateTaskStatus(@PathVariable String taskId, @RequestBody UpdateTaskStatusRequest request) {
+       return new ResponseEntity<>(adminService.updateTaskStatus(taskId, request), HttpStatus.OK);
+    }
 }
