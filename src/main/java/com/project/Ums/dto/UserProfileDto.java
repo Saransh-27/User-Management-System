@@ -17,7 +17,8 @@ public class UserProfileDto {
     private String email;
     @Builder.Default
     private List<String> roles = new ArrayList<>();
+    @Builder.Default
+    private List<String> tasks = new ArrayList<>();
     private String status;
-    private String profilePhoto;
     private LocalDateTime createdAt;
 }

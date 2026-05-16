@@ -27,6 +27,7 @@ public class User {
     private String password;
     @Builder.Default
     private List<String> roles = new ArrayList<>();
+    private List<String> tasks = new ArrayList<>();
     @Indexed
     private String status;
     @Indexed

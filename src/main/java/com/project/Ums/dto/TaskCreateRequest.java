@@ -12,6 +12,6 @@ import java.time.LocalDateTime;
 public class TaskCreateRequest {
     private String title;
     private String description;
-    private LocalDateTime dueDate;
-    private String assignedTo;
+    private LocalDateTime dueDate; //YYYY-MM-DDTHH:MM:SS
+    private String assignedTo; //userId
 }
