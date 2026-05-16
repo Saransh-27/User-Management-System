@@ -13,9 +13,6 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends MongoRepository<Task, String> {
     List<Task> findByAssignedTo(String username);
-
-    List<Task> findByStatusContainingIgnoreCase(String query);
-
-    List<Task> findByStatusContaining(String inProgress);
+    List<Task> findByStatusContaining(String status);
 
 }
