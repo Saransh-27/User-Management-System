@@ -6,13 +6,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
+@Repository
 public interface TaskRepository extends MongoRepository<Task, String> {
+    List<Task> findByAssignedTo(String username);
 
-    List<Task> findByAssignedTo(String userId);
+    List<Task> findByStatusContainingIgnoreCase(String query);
 
-    Page<Task> findByStatus(TaskStatus status, Pageable pageable);
+    List<Task> findByStatusContaining(String inProgress);
 
-    Page<Task> findByAssignedTo(String userId, Pageable pageable);
 }
