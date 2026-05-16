@@ -16,6 +16,7 @@ import com.project.Ums.repository.TaskRepository;
 import com.project.Ums.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,7 +35,8 @@ public class AdminService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final VerificationService verificationService;
-    private final TaskRepository taskRepository;
+    @Autowired
+    private TaskRepository taskRepository;
 
     public String addUser(UserRequestDto dto) {
         User user = UserMapper.toEntity(dto);
@@ -106,15 +108,21 @@ public class AdminService {
         taskRepository.delete(task);
     }
 
+
+//     tasks Service ----->
+
     public TaskResponse createTask(TaskCreateRequest Request) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userName = authentication.getName();
+        userRepository.findById(Request.getAssignedTo())
+                .orElseThrow(() -> new UserNotFoundException("Assigned user not found with ID:" + Request.getAssignedTo()));
         Task task = TaskMapper.toEntity(Request);
         task.setCreatedAt(LocalDateTime.now());
         task.setStatus(TaskStatus.TODO);
         task.setCreatedBy(userName);
         Task savedTask = taskRepository.save(task);
+        log.info("Task created: {} assigned to: {} by admin: {}", task.getTitle(), task.getAssignedTo(), userName);
         return TaskMapper.toResponse(savedTask);
     }
 
@@ -128,10 +136,38 @@ public class AdminService {
     public TaskResponse updateTaskStatus(String id, UpdateTaskStatusRequest request){
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException("Task not found with ID:" + id));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userName = authentication.getName();
         task.setStatus(request.getStatus());
         task.setUpdatedAt(LocalDateTime.now());
         taskRepository.save(task);
+        log.info("Task status updated: {} to {} by {}", task.getTitle(), request.getStatus(), userName);
         return TaskMapper.toResponse(task);
+    }
+
+    public List<TaskResponse> searchTasks(String query, String searchType) {
+        List<Task> tasks;
+        switch (searchType.toUpperCase()) {
+            case "TODO":
+                tasks = taskRepository.findByStatusContaining("TODO");
+                break;
+            case "IN_PROGRESS":
+                tasks = taskRepository.findByStatusContaining("IN_PROGRESS");;
+                break;
+            case "COMPLETED":
+                tasks = taskRepository.findByStatusContaining("COMPLETED");
+                break;
+            case "ALL":
+            default:
+                tasks = taskRepository.findByStatusContaining("TODO");
+                 tasks.addAll(taskRepository.findByStatusContaining("IN_PROGRESS"));
+                 tasks.addAll(taskRepository.findByStatusContaining("COMPLETED"));
+                break;
+        }
+
+        return tasks.stream()
+                .map(TaskMapper::toResponse)
+                .toList();
     }
 }
 

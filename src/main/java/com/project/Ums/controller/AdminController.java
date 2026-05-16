@@ -16,8 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -126,7 +124,7 @@ public class AdminController {
         return new ResponseEntity<>(adminService.getAllTasks(), HttpStatus.OK);
     }
 
-    @PutMapping("/update/{taskId}/status")
+    @PutMapping("/put-task/{taskId}/status")
     public ResponseEntity<?> updateTaskStatus(@PathVariable String taskId, @RequestBody UpdateTaskStatusRequest request) {
         return new ResponseEntity<>(adminService.updateTaskStatus(taskId, request), HttpStatus.OK);
     }
@@ -135,5 +133,14 @@ public class AdminController {
     public ResponseEntity<?> deleteTaskById(@PathVariable String taskId) {
         adminService.deleteTaskById(taskId);
         return ResponseEntity.ok("Task deleted successfully");
+    }
+
+    @GetMapping("/task/search")
+    public ResponseEntity<?> searchTasks(
+            @Parameter(description = "Search query - can be task title, assigned user ID, or task ID")
+            @RequestParam("query") String query,
+            @Parameter(description = "Search type - title, assignedTo, or all")
+            @RequestParam(value = "searchType", defaultValue = "all") String searchType) {
+        return new ResponseEntity<>(adminService.searchTasks(query, searchType), HttpStatus.OK);
     }
 }
