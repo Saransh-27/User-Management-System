@@ -17,7 +17,7 @@ public class TaskMapper {
     }
 
     // Entity → Response
-    public static TaskResponse toResponse(Task task) {
+    public static TaskResponse toResponse(Task task, com.project.Ums.entity.User assignedUser) {
         return TaskResponse.builder()
                 .id(task.getId())
                 .title(task.getTitle())
@@ -25,7 +25,11 @@ public class TaskMapper {
                 .status(task.getStatus())
                 .dueDate(task.getDueDate())
                 .assignedTo(task.getAssignedTo())
+                .assignedUserName(assignedUser != null ? assignedUser.getUserName() : "Unknown")
+                .assignedUserEmail(assignedUser != null ? assignedUser.getEmail() : null)
                 .createdBy(task.getCreatedBy())
+                .attachmentFileName(task.getAttachmentFileName())
+                .attachmentFile(task.getAttachmentFile())
                 .build();
     }
 }
