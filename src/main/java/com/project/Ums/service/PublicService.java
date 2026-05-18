@@ -1,12 +1,10 @@
 package com.project.Ums.service;
 
 import com.project.Ums.dto.TaskResponse;
-import com.project.Ums.dto.UpdateTaskStatusRequest;
 import com.project.Ums.dto.UserProfileDto;
 import com.project.Ums.dto.UserUpdateDto;
 import com.project.Ums.entity.Task;
 import com.project.Ums.entity.User;
-import com.project.Ums.enums.TaskStatus;
 import com.project.Ums.exception.FileUploadException;
 import com.project.Ums.exception.InvalidPasswordException;
 import com.project.Ums.exception.TaskNotFoundException;
@@ -172,8 +170,10 @@ public class PublicService {
         if (tasks == null || tasks.isEmpty()) {
             throw new TaskNotFoundException("No tasks found for user: " + userId);
         }
+        User assignedUser = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
         return tasks.stream()
-                .map(TaskMapper::toResponse)
+                .map(task -> TaskMapper.toResponse(task, assignedUser))
                 .collect(Collectors.toList());
     }
 

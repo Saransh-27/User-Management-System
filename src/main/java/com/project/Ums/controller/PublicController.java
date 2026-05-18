@@ -6,9 +6,10 @@ import com.project.Ums.dto.UserUpdateDto;
 import com.project.Ums.entity.User;
 import com.project.Ums.exception.UserNotFoundException;
 import com.project.Ums.logging.LogActivity;
+import com.project.Ums.repository.TaskRepository;
 import com.project.Ums.repository.UserRepository;
-import com.project.Ums.service.AdminService;
 import com.project.Ums.service.PublicService;
+import com.project.Ums.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -23,7 +24,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.Map;
 
 
@@ -39,7 +39,7 @@ public class PublicController {
     @Autowired
     private UserRepository userRepository;
     @Autowired
-    private AdminService adminService;
+    private TaskService taskService;
     
     
     @Operation(summary = "View user profile", description = "Retrieves the current authenticated user's profile information")
@@ -154,6 +154,11 @@ public class PublicController {
 
     @PutMapping("/update-task/{taskId}/status")
     public ResponseEntity<?> updateTaskStatus(@PathVariable String taskId, @RequestBody UpdateTaskStatusRequest request) {
-       return new ResponseEntity<>(adminService.updateTaskStatus(taskId, request), HttpStatus.OK);
+       return new ResponseEntity<>(taskService.updateTaskStatus(taskId, request), HttpStatus.OK);
+    }
+
+    @GetMapping("/get-task/{taskId}")
+    public ResponseEntity<?> getTaskById(@PathVariable String taskId) {
+        return ResponseEntity.ok(taskService.getTaskById(taskId));
     }
 }
