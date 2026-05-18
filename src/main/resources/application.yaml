@@ -58,9 +58,9 @@ jwt:
   secret: ${JWT_SECRET}
 
 app:
-  environment: ${APP_ENV:local}  # Default to local if not set
+  environment: ${APP_ENV}  # Default to local if not set
   verification:
-    url: ${APP_VERIFICATION_URL:http://localhost:3000}  # Default to localhost for local development
+    url: ${APP_VERIFICATION_URL}  # Default to localhost for local development
   email:
-    enabled: ${EMAIL_ENABLED:true}  # Can be disabled in production
+    enabled: ${EMAIL_ENABLED}  # Can be disabled in production
 
