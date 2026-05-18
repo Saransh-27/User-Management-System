@@ -14,6 +14,10 @@ public class TaskResponse {
     private String description;
     private TaskStatus status;
     private String assignedTo;
+    private String assignedUserName;
+    private String assignedUserEmail;
     private String createdBy;
     private LocalDateTime dueDate;
+    private String attachmentFileName;
+    private String attachmentFile;
 }

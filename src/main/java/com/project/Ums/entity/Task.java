@@ -32,4 +32,6 @@ public class Task {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String attachmentFileName;      // original filename (e.g., "specs.pdf")
+    private String attachmentFile;          // Base64 encoded file content (data URL format)
 }
