@@ -25,6 +25,7 @@ public class UserMapper {
                 .email(user.getEmail())
                 .roles(user.getRoles())
                 .status(user.getStatus())
+                .profilePhoto(user.getProfilePhoto())
                 .createdAt(user.getCreatedAt())
                 .build();
     }
@@ -37,6 +38,7 @@ public class UserMapper {
                 .email(user.getEmail())
                 .roles(user.getRoles())
                 .status(user.getStatus())
+                .profilePhoto(user.getProfilePhoto())
                 .tasks(user.getTasks())
                 .createdAt(user.getCreatedAt())
                 .build();

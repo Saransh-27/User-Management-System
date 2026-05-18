@@ -20,5 +20,6 @@ public class UserProfileDto {
     @Builder.Default
     private List<String> tasks = new ArrayList<>();
     private String status;
+    private String profilePhoto;
     private LocalDateTime createdAt;
 }
