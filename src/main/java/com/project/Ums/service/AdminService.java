@@ -1,24 +1,15 @@
 package com.project.Ums.service;
 
-import com.project.Ums.dto.TaskCreateRequest;
-import com.project.Ums.dto.TaskResponse;
-import com.project.Ums.dto.UpdateTaskStatusRequest;
 import com.project.Ums.dto.UserRequestDto;
 import com.project.Ums.dto.UserResponseDto;
-import com.project.Ums.entity.Task;
 import com.project.Ums.entity.User;
-import com.project.Ums.enums.TaskStatus;
 import com.project.Ums.exception.UserNotFoundException;
-import com.project.Ums.exception.TaskNotFoundException;
-import com.project.Ums.mapper.TaskMapper;
 import com.project.Ums.mapper.UserMapper;
 import com.project.Ums.repository.TaskRepository;
 import com.project.Ums.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -100,74 +91,6 @@ public class AdminService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID:" + id));
         userRepository.delete(user);
-    }
-
-    public void deleteTaskById(String id){
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new TaskNotFoundException("Task not found with ID:" + id));
-        taskRepository.delete(task);
-    }
-
-
-//     tasks Service ----->
-
-    public TaskResponse createTask(TaskCreateRequest Request) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userName = authentication.getName();
-        userRepository.findById(Request.getAssignedTo())
-                .orElseThrow(() -> new UserNotFoundException("Assigned user not found with ID:" + Request.getAssignedTo()));
-        Task task = TaskMapper.toEntity(Request);
-        task.setCreatedAt(LocalDateTime.now());
-        task.setStatus(TaskStatus.TODO);
-        task.setCreatedBy(userName);
-        Task savedTask = taskRepository.save(task);
-        log.info("Task created: {} assigned to: {} by admin: {}", task.getTitle(), task.getAssignedTo(), userName);
-        return TaskMapper.toResponse(savedTask);
-    }
-
-    public List<TaskResponse> getAllTasks(){
-        return taskRepository.findAll()
-                .stream()
-                .map(TaskMapper::toResponse)
-                .toList();
-    }
-
-    public TaskResponse updateTaskStatus(String id, UpdateTaskStatusRequest request){
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new TaskNotFoundException("Task not found with ID:" + id));
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String userName = authentication.getName();
-        task.setStatus(request.getStatus());
-        task.setUpdatedAt(LocalDateTime.now());
-        taskRepository.save(task);
-        log.info("Task status updated: {} to {} by {}", task.getTitle(), request.getStatus(), userName);
-        return TaskMapper.toResponse(task);
-    }
-
-    public List<TaskResponse> searchTasks(String query, String searchType) {
-        List<Task> tasks;
-        switch (searchType.toUpperCase()) {
-            case "TODO":
-                tasks = taskRepository.findByStatusContaining("TODO");
-                break;
-            case "IN_PROGRESS":
-                tasks = taskRepository.findByStatusContaining("IN_PROGRESS");;
-                break;
-            case "COMPLETED":
-                tasks = taskRepository.findByStatusContaining("COMPLETED");
-                break;
-            case "ALL":
-            default:
-                tasks = taskRepository.findByStatusContaining("TODO");
-                 tasks.addAll(taskRepository.findByStatusContaining("IN_PROGRESS"));
-                 tasks.addAll(taskRepository.findByStatusContaining("COMPLETED"));
-                break;
-        }
-
-        return tasks.stream()
-                .map(TaskMapper::toResponse)
-                .toList();
     }
 }
 
