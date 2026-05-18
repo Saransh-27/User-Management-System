@@ -40,8 +40,6 @@ public class AuthController {
     @Autowired
     private UserRepository userRepository;
     @Autowired
-    private AdminService adminService;
-    @Autowired
     private PasswordResetService passwordResetService;
 
     @Operation(summary = "User login", description = "Authenticates user credentials and returns JWT token")
@@ -56,16 +54,46 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginDto dto){
         try{
-            User user = userRepository.findByUserName(dto.getUserName())
-                        .orElseThrow(() -> new UserNotFoundException("User not found"));
+            // Validate that at least one identifier is provided
+            if ((dto.getUserName() == null || dto.getUserName().isBlank()) &&
+                    (dto.getEmail() == null || dto.getEmail().isBlank())) {
+                throw new IllegalArgumentException("Either username or email is required");
+            }
 
-            if(!"ACTIVE".equals(user.getStatus())){
+            if (dto.getPassword() == null || dto.getPassword().isBlank()) {
+                throw new IllegalArgumentException("Password is required");
+            }
+
+            // Try to find user by username first
+            User user = null;
+
+            if (dto.getUserName() != null && !dto.getUserName().isBlank()) {
+                user = userRepository.findByUserName(dto.getUserName())
+                        .orElse(null);
+            }
+
+            // If not found by username, try by email
+            if (user == null && dto.getEmail() != null && !dto.getEmail().isBlank()) {
+                user = userRepository.findByEmail(dto.getEmail())
+                        .orElse(null);
+            }
+
+            // If still not found, throw exception
+            if (user == null) {
+                throw new UserNotFoundException("User not found with provided username or email");
+            }
+
+            // Check if user is verified
+            if (!"ACTIVE".equals(user.getStatus())) {
                 throw new RuntimeException("User is not verified");
             }
+
+            // Authenticate using the username (for Spring Security)
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(dto.getUserName(), dto.getPassword()));
+                    new UsernamePasswordAuthenticationToken(user.getUserName(), dto.getPassword()));
+
             String token = jwtUtil.generateToken(authentication.getName());
-            
+
             // Return both token and user data
             return ResponseEntity.ok(new LoginResponse(token, UserMapper.toProfile(user)));
         }catch (Exception e){
