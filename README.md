@@ -15,6 +15,15 @@ This is a full-stack User Management System:
 
 A comprehensive backend User Management System built with Spring Boot 3.5.10 and MongoDB, featuring JWT-based authentication, role-based authorization, email notifications with OTP verification, comprehensive activity logging, and RESTful APIs for complete user lifecycle management.
 
+
+### 📽️ Live Demo Video
+
+
+
+https://github.com/user-attachments/assets/d27dc20f-0955-4f20-9a78-aa4b6e89eb21
+
+
+
 ---
 
 ## 🚀 Tech Stack
